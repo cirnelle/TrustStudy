@@ -1,0 +1,10 @@
+nasa,cosmocrops,1,0,1,0,1,0,1,0,0,0,2,0,0,0,0,0
+arielanbar,nasa,1,1,1,0,1,0,1,0,0,1,2,0,0,0,0,0
+nasa,trassens,1,0,1,0,1,0,1,0,0,0,2,0,0,0,0,0
+neiltyson,cosmocrops,2,0,2,0,0,0,0,0,0,0,1,0,1,0,1,0
+cosmocrops,nasa,2,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0
+neiltyson,arielanbar,2,1,3,0,0,0,0,0,0,1,3,0,0,0,0,0
+trassens,nasa,2,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0
+neiltyson,trassens,1,0,1,1,0,0,0,0,0,0,0,1,1,0,1,0
+cosmocrops,neiltyson,1,1,2,0,0,0,0,0,0,1,2,0,0,0,0,0
+nasa,arielanbar,2,0,1,1,0,0,0,0,0,0,1,1,1,0,1,0
