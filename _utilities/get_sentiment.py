@@ -38,7 +38,7 @@ class GetSentiment():
                    "sentidata",
                    "/Users/yi-linghwong/GitHub/data_files/SentiStrength/SentStrength_Data_December2015English/",
                    "input", path_to_store_tweets_only_file, "outputFolder", path_to_folder_to_store_sentistrength_output,
-                   "sentenceCombineTot", "paragraphCombineTot", "binary", "negativeMultiplier", "1"]
+                   "sentenceCombineTot", "paragraphCombineTot", "binary", "negativeMultiplier", "0.01"] #use '1' or '1.5' for negative multiplier for p@s tweets; use '0.01' for s@s and s@p tweets
 
         subprocess.Popen(command)
 
@@ -46,8 +46,9 @@ class GetSentiment():
     def create_tweet_file_with_sentiment(self):
 
 
-        #lines = open(path_to_folder_to_store_sentistrength_output+'public_@scientist_extracted0_out.txt','r').readlines()
-        lines = open(path_to_folder_to_store_sentistrength_output + 'scientist_@public0_out.txt','r').readlines()#remember to change file name!
+        #lines = open(path_to_folder_to_store_sentistrength_output+'public_@scientist_filtered0_out.txt','r').readlines()
+        #lines = open(path_to_folder_to_store_sentistrength_output + 'scientist_@public_ALL0_out.txt','r').readlines()#remember to change file name!
+        lines = open(path_to_folder_to_store_sentistrength_output + 'scientist_@scientist_ALL0_out.txt', 'r').readlines()
 
         print ("Length of sentistrength output tweet list is "+str(len(lines)-1))
 
@@ -133,22 +134,25 @@ class GetSentiment():
 # variables
 ################
 
-#path_to_raw_tweets = '../tweets/mentions/public_mention_scientist_extracted/public_@scientist_filtered.csv'
-path_to_raw_tweets = '../tweets/mentions/scientist_mention_public/scientist_@public.csv'
+#path_to_raw_tweets = '../tweets/public_mention_scientist_extracted/1_18sep-18oct/public_@scientist_filtered.csv'
+#path_to_raw_tweets = '../tweets/scientist_mention_public/1_18sep-18oct/scientist_@public_ALL.csv'
+path_to_raw_tweets = '../tweets/scientist_mention_scientist/1_18sep-18oct/scientist_@scientist_ALL.csv'
 
-#path_to_store_tweets_only_file = '../output/sentistrength/source_tweet/public_@scientist_extracted.csv'
-path_to_store_tweets_only_file = '../output/sentistrength/source_tweet/scientist_@public.csv'
+#path_to_store_tweets_only_file = '../output/sentistrength/source_tweet/1_18sep-18oct/public_@scientist_filtered.csv'
+#path_to_store_tweets_only_file = '../output/sentistrength/source_tweet/1_18sep-18oct/scientist_@public_ALL.csv'
+path_to_store_tweets_only_file = '../output/sentistrength/source_tweet/1_18sep-18oct/scientist_@scientist_ALL.csv'
 
-path_to_folder_to_store_sentistrength_output = '../output/sentistrength/sentistrength_output/'
+path_to_folder_to_store_sentistrength_output = '../output/sentistrength/sentistrength_output/1_18sep-18oct/'
 
-#path_to_store_raw_tweet_file_with_sentiment = '../tweets/mentions/public_mention_scientist_extracted/public_@scientist_sentiment.csv'
-path_to_store_raw_tweet_file_with_sentiment = '../tweets/mentions/scientist_mention_public/scientist_@public_sentiment.csv'
+#path_to_store_raw_tweet_file_with_sentiment = '../tweets/public_mention_scientist_extracted/1_18sep-18oct/public_@scientist_sentiment.csv'
+#path_to_store_raw_tweet_file_with_sentiment = '../tweets/scientist_mention_public/1_18sep-18oct/scientist_@public_sentiment.csv'
+path_to_store_raw_tweet_file_with_sentiment = '../tweets/scientist_mention_scientist/1_18sep-18oct/scientist_@scientist_sentiment.csv'
 
 
 if __name__ == '__main__':
 
     gs = GetSentiment()
 
-    #gs.run_sentistrength()
+    #gs.run_sentistrength() #NOTE: for s@s and s@p tweets, run this, but then MANUALLY replace all -1 sentiment with 1!
 
     gs.create_tweet_file_with_sentiment() #IMPORTANT: remember to change file name in function!!

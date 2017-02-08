@@ -823,7 +823,8 @@ class NaiveBayes():
 ###############
 
 #path_to_labelled_file = '../output/features/normalised_labelled_degree_triad.csv'
-path_to_labelled_file = '../output/features/by_trust_dictionary/strict/std_norm/std_labelled_degree_triad.csv'
+path_to_labelled_file = '../output/features/by_manual_labelling/liwc/std_norm/norm_labelled_liwc.csv'
+#path_to_labelled_file = '/Users/yi-linghwong/GitHub/scikit-learn/sklearn/datasets/data/iris_no_header.csv'
 
 path_to_file_to_be_predicted = '../output/to_predict/sydscifest/sydscifest_test'
 path_to_gold_standard_file = '../output/features/maas/labelled_combined.csv'
@@ -856,19 +857,42 @@ def get_data_set():
     # Get dataset
     #############
 
-    degree_column = ['u_out_pos', 'u_out_neg', 'v_in_pos', 'v_in_neg', 'u_out', 'v_in', 'embeddedness']
-    triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16']
+    # -------------------
+    # UNCOMMENT for column names for degree and triad
+
+    # degree_column = ['u_out_pos', 'u_out_neg', 'v_in_pos', 'v_in_neg', 'u_out', 'v_in', 'embeddedness']
+    # triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15',
+    #                 't16']
+    # target = ['class']
+    #
+    # column_names = degree_column + triad_column + target
+    # #column_names = degree_column + target
+    # #column_names = triad_column + target
+
+
+    # -------------------
+    # UNCOMMENT for column names for liwc features
+
+    lines = open('../output/liwc/liwc_public_timeline_tweets.txt', 'r').readlines()
+
+    for line in lines[:1]:
+        spline = line.rstrip('\n').split('\t')
+        liwc_column = spline[2:]
+
     target = ['class']
 
-    column_names = degree_column + triad_column + target
+    column_names = liwc_column + target
+
+    # ---------------------
+
 
     dataset = pd.read_csv(path_to_labelled_file, names=column_names)
-    print (dataset.shape)
+    print(dataset.shape)
 
-    X = dataset.ix[:,:-1]
+    X = dataset.ix[:, :-1]
     y = dataset['class']
 
-    return X,y
+    return X, y
 
 
 

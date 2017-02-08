@@ -555,183 +555,223 @@ class ExtraTree():
         f.close()
 
 
-    def get_important_features(self, clf, count_vect):
+    def get_important_features(self, clf):
 
-        # get vocabulary
-        feature_names = count_vect.get_feature_names()
-
-        f = open(path_to_store_vocabulary_file, 'w')
-
-        for fn in feature_names:
-            f.write(str(fn) + '\n')
-        f.close()
+        # # get vocabulary
+        # feature_names = count_vect.get_feature_names()
+        #
+        # f = open(path_to_store_vocabulary_file, 'w')
+        #
+        # for fn in feature_names:
+        #     f.write(str(fn) + '\n')
+        # f.close()
 
         # get most important features
+
+        print ()
+        print ("Getting important features...")
+
         feat_importance = clf.feature_importances_
         feat_imp = []
 
         for fi in feat_importance:
-            feat_imp.append(str(fi))
+            feat_imp.append(fi)
+
+        print (len(feat_imp))
+
+        feature_names = get_data_set()[2][:-1]
 
         print (len(feature_names))
-        print (len(feat_imp))
+
+        if len(feat_imp) == len(feature_names):
+
+            zipped = zip(feature_names,feat_imp)
+
+            feature_and_scores = []
+
+            for z in zipped:
+                z = list(z)
+                feature_and_scores.append(z)
+
+            feature_and_scores.sort(key=lambda x:float(x[1]),reverse=True) #sort list by most important feature first
+
+            print (feature_and_scores)
+
+            feat_scores = []
+
+            for fs in feature_and_scores:
+                fs[1] = str(fs[1])
+                feat_scores.append(fs)
+
+            f = open(path_to_store_feature_importance_file,'w')
+
+            for fs in feat_scores:
+                f.write(','.join(fs)+'\n')
+
+            f.close()
+
+
+        else:
+
+            print ("Length not equal, exiting...")
+
 
         #################
         # if feature selection was used, need to find out which are the features that are retained
         #################
 
-        if len(feature_names) != len(feat_imp):
-
-            print ()
-            print ("###### feature selection was used, getting retained features ######")
-
-            lines = open(path_to_store_feature_selection_boolean_file).readlines()
-
-            feature_boolean = []
-
-            for line in lines:
-                spline = line.replace('\n','')
-                feature_boolean.append(spline)
-
-            if len(feature_boolean) == len(feature_names):
-
-                selected_features = zip(feature_names,feature_boolean)
-
-                feature_names = []
-
-                for sf in selected_features:
-                    if sf[1] == 'True':
-                        feature_names.append(sf[0])
-
-                print ("Length of retained features is "+str(len(feature_names)))
-                print ()
-
-            else:
-                print ("length not equal, exiting...")
-                sys.exit()
-
-
-        f = open(path_to_store_complete_feature_importance_file, 'w')
-        for fea in feat_imp:
-            f.write(str(fea) + '\n')
-        f.close()
-
-        if len(feature_names) == len(feat_imp):
-
-            zipped = zip(feat_imp,feature_names)
-            feat_list = []
-
-            for z in zipped:
-                z = list(z)
-                feat_list.append(z)
-
-            feat_list.sort(reverse=True)
-
-        else:
-            print ("Length of coef and feature list not equal, exiting...")
-            sys.exit()
-
-        f = open(path_to_store_top_important_features_file, 'w')
-
-        for fl in feat_list[:100]:
-            f.write('\t'.join(fl)+'\n')
-
-        f.close()
-
-        ##################
-        # get feature importance by class
-        ##################
-
-        lines = open(path_to_labelled_file, 'r').readlines()
-
-        l1=[] #hrt ngram list
-        l2=[] #lrt ngram list
-
-        for line in lines:
-            spline=line.replace("\n", "").split(",")
-            #creates a list with key and value. Split splits a string at the comma and stores the result in a list
-
-            #create a list of word which includes ngrams
-            n=4
-
-            if spline[1] == 'HER':
-                for i in range(1,n):
-                    n_grams = ngrams(spline[0].split(), i) #output [('one', 'two'), ('two', 'three'), ('three', 'four')]
-                    #join the elements within the list together
-                    gramify = [' '.join(x) for x in n_grams] #output ['one two', 'two three', 'three four']
-                    l1.extend(gramify)
-
-            elif spline[1] == 'LER':
-                for i in range(1,n):
-                    n_grams = ngrams(spline[0].split(), i)
-                    gramify = [' '.join(x) for x in n_grams]
-                    l2.extend(gramify)
-
-        ##combine lists in a list into one long list. Flattening a list.
-        #hrt_t = list(itertools.chain(*l1))
-        #lrt_t = list(itertools.chain(*l2))
-
-        hrt = [w.lower() for w in l1]
-        lrt = [w.lower() for w in l2]
-
-        lines2 = open(path_to_store_top_important_features_file, 'r').readlines()
-
-        features=[]
-
-        for line in lines2:
-            spline=line.replace("\n", "").split("\t")
-
-            features.append(spline[1])
-
-
-        feat_by_class=[]
-
-        for f in features:
-
-            # count the occurrences of each important feature in HRT and LRT list respectively
-            hrt_count = hrt.count(f)
-            lrt_count = lrt.count(f)
-
-            #print ("HER %s: " % f + str(hrt_count))
-            #print ("LER %s: " % f + str(lrt_count))
-
-            if (hrt_count-lrt_count)>0:
-
-                feat_by_class.append(['HER',f,str(hrt_count)])
-
-
-            elif (lrt_count-hrt_count)>0:
-                feat_by_class.append(['LER',f,str(lrt_count)])
-
-            else:
-                pass
-
-
-        #feat_by_class = sorted(feat_by_class)
-
-        file = open(path_to_store_important_features_by_class_file, 'w')
-
-        for f in feat_by_class:
-            file.write(','.join(f)+'\n')
-        file.close()
-
-        # write to file for normalisation
-
-        feat_for_normalisation = []
-
-        for f in feat_by_class:
-            for fl in feat_list:
-                if f[1] == fl[1]:
-                    feat_for_normalisation.append([f[0],f[1],fl[0]])
-
-        f = open(path_to_store_feat_imp_for_normalisation,'a')
-
-        f.write('\n')
-
-        for ff in feat_for_normalisation:
-            f.write(','.join(ff)+'\n')
-
-        f.close()
+        # if len(feature_names) != len(feat_imp):
+        #
+        #     print ()
+        #     print ("###### feature selection was used, getting retained features ######")
+        #
+        #     lines = open(path_to_store_feature_selection_boolean_file).readlines()
+        #
+        #     feature_boolean = []
+        #
+        #     for line in lines:
+        #         spline = line.replace('\n','')
+        #         feature_boolean.append(spline)
+        #
+        #     if len(feature_boolean) == len(feature_names):
+        #
+        #         selected_features = zip(feature_names,feature_boolean)
+        #
+        #         feature_names = []
+        #
+        #         for sf in selected_features:
+        #             if sf[1] == 'True':
+        #                 feature_names.append(sf[0])
+        #
+        #         print ("Length of retained features is "+str(len(feature_names)))
+        #         print ()
+        #
+        #     else:
+        #         print ("length not equal, exiting...")
+        #         sys.exit()
+        #
+        #
+        # f = open(path_to_store_complete_feature_importance_file, 'w')
+        # for fea in feat_imp:
+        #     f.write(str(fea) + '\n')
+        # f.close()
+        #
+        # if len(feature_names) == len(feat_imp):
+        #
+        #     zipped = zip(feat_imp,feature_names)
+        #     feat_list = []
+        #
+        #     for z in zipped:
+        #         z = list(z)
+        #         feat_list.append(z)
+        #
+        #     feat_list.sort(reverse=True)
+        #
+        # else:
+        #     print ("Length of coef and feature list not equal, exiting...")
+        #     sys.exit()
+        #
+        # f = open(path_to_store_top_important_features_file, 'w')
+        #
+        # for fl in feat_list[:100]:
+        #     f.write('\t'.join(fl)+'\n')
+        #
+        # f.close()
+        #
+        # ##################
+        # # get feature importance by class
+        # ##################
+        #
+        # lines = open(path_to_labelled_file, 'r').readlines()
+        #
+        # l1=[] #hrt ngram list
+        # l2=[] #lrt ngram list
+        #
+        # for line in lines:
+        #     spline=line.replace("\n", "").split(",")
+        #     #creates a list with key and value. Split splits a string at the comma and stores the result in a list
+        #
+        #     #create a list of word which includes ngrams
+        #     n=4
+        #
+        #     if spline[1] == 'HER':
+        #         for i in range(1,n):
+        #             n_grams = ngrams(spline[0].split(), i) #output [('one', 'two'), ('two', 'three'), ('three', 'four')]
+        #             #join the elements within the list together
+        #             gramify = [' '.join(x) for x in n_grams] #output ['one two', 'two three', 'three four']
+        #             l1.extend(gramify)
+        #
+        #     elif spline[1] == 'LER':
+        #         for i in range(1,n):
+        #             n_grams = ngrams(spline[0].split(), i)
+        #             gramify = [' '.join(x) for x in n_grams]
+        #             l2.extend(gramify)
+        #
+        # ##combine lists in a list into one long list. Flattening a list.
+        # #hrt_t = list(itertools.chain(*l1))
+        # #lrt_t = list(itertools.chain(*l2))
+        #
+        # hrt = [w.lower() for w in l1]
+        # lrt = [w.lower() for w in l2]
+        #
+        # lines2 = open(path_to_store_top_important_features_file, 'r').readlines()
+        #
+        # features=[]
+        #
+        # for line in lines2:
+        #     spline=line.replace("\n", "").split("\t")
+        #
+        #     features.append(spline[1])
+        #
+        #
+        # feat_by_class=[]
+        #
+        # for f in features:
+        #
+        #     # count the occurrences of each important feature in HRT and LRT list respectively
+        #     hrt_count = hrt.count(f)
+        #     lrt_count = lrt.count(f)
+        #
+        #     #print ("HER %s: " % f + str(hrt_count))
+        #     #print ("LER %s: " % f + str(lrt_count))
+        #
+        #     if (hrt_count-lrt_count)>0:
+        #
+        #         feat_by_class.append(['HER',f,str(hrt_count)])
+        #
+        #
+        #     elif (lrt_count-hrt_count)>0:
+        #         feat_by_class.append(['LER',f,str(lrt_count)])
+        #
+        #     else:
+        #         pass
+        #
+        #
+        # #feat_by_class = sorted(feat_by_class)
+        #
+        # file = open(path_to_store_important_features_by_class_file, 'w')
+        #
+        # for f in feat_by_class:
+        #     file.write(','.join(f)+'\n')
+        # file.close()
+        #
+        # # write to file for normalisation
+        #
+        # feat_for_normalisation = []
+        #
+        # for f in feat_by_class:
+        #     for fl in feat_list:
+        #         if f[1] == fl[1]:
+        #             feat_for_normalisation.append([f[0],f[1],fl[0]])
+        #
+        # f = open(path_to_store_feat_imp_for_normalisation,'a')
+        #
+        # f.write('\n')
+        #
+        # for ff in feat_for_normalisation:
+        #     f.write(','.join(ff)+'\n')
+        #
+        # f.close()
 
 
     def plot_feature_selection(self):
@@ -783,21 +823,16 @@ class ExtraTree():
 ###############
 
 #path_to_labelled_file = '../output/features/normalised_labelled_degree_triad.csv'
-path_to_labelled_file = '../output/features/by_trust_dictionary/strict/std_norm/norm_labelled_degree_triad.csv'
+path_to_labelled_file = '../output/features/by_manual_labelling/_combined/std_norm/std_labelled_combined_all.csv'
+#path_to_labelled_file = '/Users/yi-linghwong/GitHub/scikit-learn/sklearn/datasets/data/iris_no_header.csv'
 
 path_to_file_to_be_predicted = '../output/to_predict/sydscifest/sydscifest_test'
 path_to_gold_standard_file = '../output/features/maas/labelled_combined.csv'
 path_to_store_predicted_results = '../output/predictions/maas/predicted_results_et.csv'
 
-path_to_store_vocabulary_file = '../output/feature_importance/extratree/nasa/extratree_vocab.txt'
-path_to_store_feature_selection_boolean_file = '../output/feature_importance/extratree/nasa/extratree_fs_boolean.csv'
-path_to_store_complete_feature_importance_file = '../output/feature_importance/extratree/nasa/extratree_feat_imp_all.txt'
-path_to_store_top_important_features_file = '../output/feature_importance/extratree/nasa/extratree_feature_importance.csv'
-path_to_store_important_features_by_class_file = '../output/feature_importance/extratree/nasa/extratree_feat_byClass_combined.csv'
+path_to_store_feature_importance_file = '../output/feature_importance/extratree/feat_imp.csv'
 
 path_to_store_feat_imp_for_normalisation = '../output/featimp_normalisation/extratree/nasa/nasa_real.csv'
-
-
 
 
 # for classifier without pipeline
@@ -817,12 +852,79 @@ def get_data_set():
     # Get dataset
     #############
 
+    #-------------------
+    # UNCOMMENT for column names for NETWORK features
+
+    # degree_column = ['u_out_pos', 'u_out_neg', 'v_in_pos', 'v_in_neg', 'u_out', 'v_in', 'embeddedness']
+    # triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15',
+    #                 't16']
+    # target = ['class']
+    #
+    # column_names = degree_column + triad_column + target
+    # #column_names = degree_column + target
+    # #column_names = triad_column + target
+
+
+    #-------------------
+    # UNCOMMENT for column names for LIWC features
+
+    # lines = open('../output/liwc/liwc_public_timeline_tweets.txt', 'r').readlines()
+    #
+    # for line in lines[:1]:
+    #     spline = line.rstrip('\n').split('\t')
+    #     liwc_column = spline[2:]
+    #
+    # target = ['class']
+    #
+    # column_names = liwc_column + target
+
+
+    #-------------------
+    # UNCOMMENT for column names for NETWORK + LIWC features
+
+    # degree_column = ['u_out_pos', 'u_out_neg', 'v_in_pos', 'v_in_neg', 'u_out', 'v_in', 'embeddedness']
+    # triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16']
+    #
+    # #network_column = degree_column
+    # #network_column = triad_column
+    # network_column = degree_column + triad_column
+    #
+    # lines = open('../output/liwc/liwc_public_timeline_tweets.txt', 'r').readlines()
+    #
+    # for line in lines[:1]:
+    #     spline = line.rstrip('\n').split('\t')
+    #     liwc_column = spline[2:]
+    #
+    # target = ['class']
+    #
+    # column_names = network_column + liwc_column + target
+
+    # -------------------
+    # UNCOMMENT for column names for NETWORK + LIWC + KEYWORD features
+
     degree_column = ['u_out_pos', 'u_out_neg', 'v_in_pos', 'v_in_neg', 'u_out', 'v_in', 'embeddedness']
-    triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15',
-                    't16']
+    #triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16']
+    triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11']
+
+    #network_column = degree_column
+    #network_column = triad_column
+    network_column = degree_column + triad_column
+
+    lines = open('../output/liwc/liwc_public_timeline_tweets.txt', 'r').readlines()
+
+    for line in lines[:1]:
+        spline = line.rstrip('\n').split('\t')
+        liwc_column = spline[2:]
+
+    #keyword_column = ['profile']
+    keyword_column = ['profile','timeline']
+
     target = ['class']
 
-    column_names = degree_column + triad_column + target
+    column_names = network_column + liwc_column + keyword_column + target
+
+    # ---------------------
+
 
     dataset = pd.read_csv(path_to_labelled_file, names=column_names)
     print(dataset.shape)
@@ -830,7 +932,7 @@ def get_data_set():
     X = dataset.ix[:, :-1]
     y = dataset['class']
 
-    return X, y
+    return X, y, column_names
 
 
 if __name__ == '__main__':
@@ -880,7 +982,7 @@ if __name__ == '__main__':
     # Get feature importance
     ###################
 
-    #et.get_important_features(clf,count_vect)
+    et.get_important_features(clf)
 
 
     ###################

@@ -9,32 +9,43 @@ class GetTriad():
 
 
     def get_scientist_and_public_list(self):
+
         ###############
         # get the list of remaining scientist and public from the node list (after getting the following for all nodes)
         # to filter out nodes whose accounts are protected/suspended/cancelled
         ###############
 
-        lines1 = open(path_to_space_user_list, 'r').readlines()
-        lines2 = open(path_to_filtered_nodes, 'r').readlines()
+        lines1 = open(path_to_seed_space_user_list, 'r').readlines()
+        lines2 = open(path_to_additional_space_user_list, 'r').readlines()
+        lines3 = open(path_to_filtered_nodes, 'r').readlines()
 
-        scientist_list = []
+        scientist_seed = []
 
         for line in lines1:
             spline = line.rstrip('\n').split(',')
 
-            scientist_list.append(spline[0].lower())
+            scientist_seed.append(spline[0].lower())
+
+        scientist_additional = []
+
+        for line in lines2:
+            spline = line.rstrip('\n')
+
+            scientist_additional.append(spline.lower())
+
+        scientist_all = scientist_seed + scientist_additional
 
         scientists = []
         public = []
 
-        for line in lines2:
-            spline = line.rstrip('\n').split(',')
+        for line in lines3:
+            spline = line.rstrip('\n')
 
-            if spline[0].lower() in scientist_list:
-                scientists.append(spline[0].lower())
+            if spline.lower() in scientist_all:
+                scientists.append(spline.lower())
 
             else:
-                public.append(spline[0].lower())
+                public.append(spline.lower())
 
         # print (scientists)
         # print (public)
@@ -44,22 +55,24 @@ class GetTriad():
 
     def get_triad(self):
 
-        lines1 = open(path_to_trust_links_file,'r').readlines()
-        lines2 = open(path_to_combined_mentions_and_following_edges,'r').readlines() #includes intra-group followings
+        lines = open(path_to_combined_mentions_and_following_edges,'r').readlines() #includes intra-group followings
 
         #----------------------
         # create undirected graph of mention and following list (incl. intra group following)
         # to get list of embedded node list
 
-        t_start = time.time()
 
         DG = nx.Graph()
+
+        print ("Getting edges...")
+
+        t_start = time.time()
 
         edges_pos = []
         edges_neg = []
         edges_all = []
 
-        for line in lines2:
+        for line in lines:
             spline = line.rstrip('\n').split(',')
 
             edges_all.append(spline)
@@ -70,7 +83,14 @@ class GetTriad():
             if spline[2] == 'neg':
                 edges_neg.append([spline[0],spline[1]])
 
+        t_end = time.time()
+        total_time = round(((t_end - t_start) / 60), 2)
+        print("Computing time was " + str(total_time) + " minutes.")
+
+        print ()
         print ("Getting unique nodes...")
+
+        t_start = time.time()
 
         nodes_with_dup = []
 
@@ -87,6 +107,10 @@ class GetTriad():
 
         print ("Length of nodes is: "+str(len(nodes)))
 
+        t_end = time.time()
+        total_time = round(((t_end - t_start) / 60), 2)
+        print("Computing time was " + str(total_time) + " minutes.")
+
         DG.add_edges_from(edges_pos, sign='+')
         DG.add_edges_from(edges_neg, sign='-')
         DG.add_nodes_from(nodes)
@@ -98,6 +122,8 @@ class GetTriad():
 
         print()
         print ("Getting unique edges ...")
+
+        t_start = time.time()
 
         edges_all = edges_pos + edges_neg
 
@@ -114,9 +140,10 @@ class GetTriad():
         total_time = round(((t_end - t_start) / 60), 2)
         print("Computing time was " + str(total_time) + " minutes.")
 
-        #--------------------------
+        #-------------------------------
         # UNCOMMENT THE FOLLOWING THE FIRST TIME WE WANT TO GET TRIAD FILE, IE WHEN UNIQUE EDGES FILE DOES NOT EXIST YET!
-
+        # Unique edges file should have been created when running get_embeddedness.py
+        #
         # print ()
         # print ("Getting sum for unique edges...")
         #
@@ -162,14 +189,13 @@ class GetTriad():
         # total_time = round(((t_end - t_start) / 60), 2)
         # print("Computing time was " + str(total_time) + " minutes.")
 
-        #---------------------
+        #-----------------------------------
 
-
-        lines = open (path_to_store_unique_edges_file,'r').readlines()
+        lines1 = open (path_to_store_unique_edges_file,'r').readlines()
 
         edges_unique_dict = {}
 
-        for line in lines:
+        for line in lines1:
             spline = line.rstrip('\n').split(',')
 
             key = (spline[0],spline[1])
@@ -182,21 +208,27 @@ class GetTriad():
                 print (spline)
 
 
-
         print ()
         print ("Getting trust links...")
+
+        lines2 = open(path_to_trust_links_file, 'r').readlines()
 
         t_start = time.time()
 
         trust_links = []
 
-        for line in lines1:
+        for line in lines2:
             spline = line.rstrip('\n').split(',')
             trust_links.append(spline)
 
         print ("Length of trust links list is: "+str(len(trust_links)))
 
+        print ()
+        print ("Creating triad dict...")
+
         triad_dict = {}
+
+        #trust_links = [['uranussideways', 'nasa', 'trust_yes']]
 
         for tl in trust_links:
 
@@ -347,13 +379,14 @@ class GetTriad():
 # variables
 ################
 
-path_to_space_user_list = '/Users/yi-linghwong/GitHub/TwitterML/user_list/user_space_combine.csv'
+path_to_seed_space_user_list = '/Users/yi-linghwong/GitHub/TwitterML/user_list/user_space_combine.csv'
+path_to_additional_space_user_list = '../user_lists/1_18sep-18oct/user_space_additional.csv'
 path_to_filtered_nodes = '../output/network/nodes/1_18sep-18oct/nodes_filtered.csv'
-path_to_trust_links_file = '../output/trust_links/by_trust_dictionary/strict/trust_links_space.csv'
-path_to_combined_mentions_and_following_edges = '../output/network/edges/edges_ALL_mentions_following_intra_group.csv'
+path_to_trust_links_file = '../output/trust_links/by_manual_labelling/1_18sep-18oct/trust_links_space_filtered.csv'
+path_to_combined_mentions_and_following_edges = '../output/network/edges/1_18sep-18oct/edges_ALL_mentions_following_intra_group.csv'
 
-path_to_store_unique_edges_file = '../output/network/edges/edges_unique.csv'
-path_to_store_triad_file = '../output/network/triad/by_trust_dictionary/strict/triad_space_strict.csv'
+path_to_store_unique_edges_file = '../output/network/edges/1_18sep-18oct/edges_unique.csv'
+path_to_store_triad_file = '../output/network/triad/by_manual_labelling/1_18sep-18oct/triad_space.csv'
 
 
 if __name__ == '__main__':

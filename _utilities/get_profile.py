@@ -5,121 +5,117 @@ import sys
 import time
 import tweepy
 import json
-
-class GetProfile():
-
-    def connect_to_twitter_api(self):
-
-        lines = open(path_to_twitter_api_key, 'r').readlines()
-
-        api_dict = {}
-
-        for line in lines:
-            spline = line.replace("\n", "").split()
-
-            api_dict[spline[0]] = spline[1]
-
-        apikey = api_dict["API_key"]
-        apisecret = api_dict["API_secret"]
-
-        AccessToken = api_dict["Access_token"]
-        AccessTokenSecret = api_dict["Access_token_secret"]
-
-        auth = tweepy.OAuthHandler(apikey, apisecret)
-        auth.set_access_token(AccessToken, AccessTokenSecret)
-
-        print("Connecting to twitter API...")
-
-        api = tweepy.API(auth, wait_on_rate_limit=True)
-
-        return api
+import multiprocessing
 
 
-    def get_public_node(self):
+def connect_to_twitter_api(i):
 
-        lines1 = open(path_to_space_user_list, 'r').readlines()
-        lines2 = open(path_to_filtered_nodes, 'r').readlines()
+    lines = open(path_to_twitter_api_key+str(i)+'.txt', 'r').readlines()
 
-        scientist_list = []
+    api_dict = {}
 
-        for line in lines1:
-            spline = line.rstrip('\n').split(',')
+    for line in lines:
+        spline = line.replace("\n", "").split()
 
-            scientist_list.append(spline[0].lower())
+        api_dict[spline[0]] = spline[1]
 
-        scientists = []
-        public = []
+    apikey = api_dict["API_key"]
+    apisecret = api_dict["API_secret"]
 
-        for line in lines2:
-            spline = line.rstrip('\n').split(',')
+    AccessToken = api_dict["Access_token"]
+    AccessTokenSecret = api_dict["Access_token_secret"]
 
-            if spline[0].lower() in scientist_list:
-                scientists.append(spline[0].lower())
+    auth = tweepy.OAuthHandler(apikey, apisecret)
+    auth.set_access_token(AccessToken, AccessTokenSecret)
 
-            else:
-                public.append(spline[0].lower())
+    api = tweepy.API(auth, wait_on_rate_limit=True)
 
-        # print (scientists)
-        # print (public)
-
-        return public
+    return api
 
 
-    def get_twitter_profile(self):
+def divide_public_node_list():
 
-        api = self.connect_to_twitter_api()
+    lines1 = open(path_to_space_user_list, 'r').readlines()
+    lines2 = open(path_to_filtered_nodes, 'r').readlines()
 
-        public_users = self.get_public_node()
+    scientist_list = []
 
-        print ("Length of nodes: ",len(public_users))
+    for line in lines1:
+        spline = line.rstrip('\n').split(',')
 
-        #public_users = ['yilinghwong']
+        scientist_list.append(spline[0].lower())
 
-        descriptions = []
+    scientists = []
+    public = []
 
-        t_start = time.time()
+    for line in lines2:
+        spline = line.rstrip('\n').split(',')
 
-        print ("Collecting profile descriptions...")
+        if spline[0].lower() in scientist_list:
+            scientists.append(spline[0].lower())
 
-
-        for pu in public_users:
-
-            print (pu)
-
-            try:
-
-                profile = api.get_user(screen_name = pu)
-
-                descriptions.append([pu,profile.description.replace('\n', ' ').replace('\r', ' ').replace('\t',' ').replace(',', ' ')])
-
-                if (len(descriptions) == 100:
-
-                    pass
-                    
-                    # write to file
-                    # descriptions = []
+        else:
+            public.append(spline[0].lower())
 
 
-            except Exception as e:
+    n = int(len(public) / 5) + 1
+    # print (n)
 
-                print ("Failed: " + str(e))
+    public_div_list = [public[i:i + n] for i in range(0, len(public), n)]
 
-        #print ("Length of profile nodes: ", len(descriptions))
-
-        t_end = time.time()
-        total_time = round(((t_end - t_start) / 60), 2)
-        print ()
-        print("Computing time was " + str(total_time) + " minutes.")
+    return public_div_list
 
 
-        f = open(path_to_store_user_profile_description_file,'w')
+def get_twitter_profile(i):
 
-        for d in descriptions:
-            f.write(','.join(d)+'\n')
+    api = connect_to_twitter_api(i+33)
 
-        f.close()
+    public_users = divide_public_node_list()[i-1]
+
+    print ("Length of nodes for "+str(i)+": ",len(public_users))
+    print (public_users)
+
+    #public_users = ['yilinghwong']
+
+    descriptions = []
+
+    for pu in public_users:
+
+        #print (pu)
+
+        try:
+
+            profile = api.get_user(screen_name = pu)
+
+            descriptions.append([pu,profile.description.replace('\n', ' ').replace('\r', ' ').replace('\t',' ').replace(',', ' ')])
+
+            if len(descriptions) > 99:
+
+                #print ("aha")
+
+                f = open(path_to_store_user_profile_description_file+str(i)+'.csv','a')
+
+                for d in descriptions:
+
+                    f.write(','.join(d)+'\n')
+
+                f.close()
+
+                descriptions = []
 
 
+        except Exception as e:
+
+            print ("Failed: " + str(e))
+
+    # need the following lines to write to file the remaining items in description list
+
+    f = open(path_to_store_user_profile_description_file + str(i) + '.csv', 'a')
+
+    for d in descriptions:
+        f.write(','.join(d)+'\n')
+
+    f.close()
 
 
 
@@ -127,15 +123,25 @@ class GetProfile():
 # variables
 ##############
 
-path_to_twitter_api_key = '/Users/yi-linghwong/keys/twitter_api_keys_34.txt'
+path_to_twitter_api_key = '/Users/yi-linghwong/keys/twitter_api_keys_'
 path_to_space_user_list = '/Users/yi-linghwong/GitHub/TwitterML/user_list/user_space_combine.csv'
 path_to_filtered_nodes = '../output/network/nodes/1_18sep-18oct/nodes_filtered.csv'
 
-path_to_store_user_profile_description_file = '../output/profile_description/profile_1_18sep-18oct.csv'
+path_to_store_user_profile_description_file = '../output/profile_description/1_18sep-18oct/filtered_nodes/profile_'
 
 
 if __name__ == '__main__':
 
-    gp = GetProfile()
+    threads_1 = 5
 
-    gp.get_twitter_profile()
+    jobs = []
+
+    for n in range(1, threads_1 + 1):
+        print(n)
+
+        getfoll = multiprocessing.Process(name='getprofile_' + str(n), target=get_twitter_profile, args=(n,))
+        jobs.append(getfoll)
+
+    for j in jobs:
+        print(j)
+        j.start()

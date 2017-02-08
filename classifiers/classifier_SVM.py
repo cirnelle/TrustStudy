@@ -99,9 +99,9 @@ class SVM():
 
         print("Fitting data ...")
 
-        clf = SVC(C=1.0, cache_size=200, class_weight=None, coef0=0.0, degree=3, kernel='rbf', gamma=0.1,
-                  max_iter=-1, probability=False, random_state=42, shrinking=True,
-                  tol=0.001, verbose=False).fit(x_train, y_train)
+        clf = SVC(C=_C, cache_size=_cache_size, class_weight=_class_weight, coef0=_coef0, degree=_degree, kernel=_kernel, gamma=_gamma,
+                  max_iter=_max_iter, probability=_probability, random_state=42, shrinking=_shrinking,
+                  tol=_tol, verbose=_verbose).fit(x_train, y_train)
 
 
         ##################
@@ -564,31 +564,50 @@ class SVM():
         f.close()
 
 
-    def get_important_features(self,clf,count_vect):
+    def get_important_features(self,clf):
 
         # get coef_
 
-        f = open(path_to_store_coefficient_file, 'w')
+        feat_imp = clf.coef_[0]
 
-        coef = clf.n_support_
+        print(len(feat_imp))
 
-        for c in coef:
-            f.write(str(c) + '\n')
+        feature_names = get_data_set()[2][:-1]
 
-        f.close()
+        print(len(feature_names))
 
-        # get feature names
+        if len(feat_imp) == len(feature_names):
 
-        feature_names = count_vect.get_feature_names()
+            zipped = zip(feature_names, feat_imp)
 
-        f = open(path_to_store_list_of_feature_file, 'w')
+            feature_and_scores = []
 
-        for fn in feature_names:
-            f.write(str(fn) + '\n')
-        f.close()
+            for z in zipped:
+                z = list(z)
+                feature_and_scores.append(z)
 
-        #print (len(coef))
-        print (len(feature_names))
+            feature_and_scores.sort(key=lambda x: float(x[1]),
+                                    reverse=True)  # sort list by most important feature first
+
+            print(feature_and_scores)
+
+            feat_scores = []
+
+            for fs in feature_and_scores:
+                fs[1] = str(fs[1])
+                feat_scores.append(fs)
+
+            f = open(path_to_store_feature_importance_file, 'w')
+
+            for fs in feat_scores:
+                f.write(','.join(fs) + '\n')
+
+            f.close()
+
+
+        else:
+
+            print("Length not equal, exiting...")
 
         #################
         # if feature selection was used, need to find out which are the features that are retained
@@ -735,27 +754,29 @@ class SVM():
 ###############
 
 #path_to_labelled_file = '../output/features/normalised_labelled_degree_triad.csv'
-path_to_labelled_file = '../output/features/by_trust_dictionary/strict/std_norm/norm_labelled_degree_triad.csv'
+path_to_labelled_file = '../output/features/by_manual_labelling/_combined/std_norm/std_labelled_combined_all.csv'
+#path_to_labelled_file = '/Users/yi-linghwong/GitHub/scikit-learn/sklearn/datasets/data/iris_no_header.csv'
 
 path_to_file_to_be_predicted = '../output/to_predict/sydscifest/sydscifest_test'
 path_to_gold_standard_file = '../output/features/maas/labelled_combined.csv'
 path_to_store_predicted_results = '../output/predictions/maas/predicted_results_svm.csv'
 
-path_to_store_coefficient_file = '../output/feature_importance/svm/space/likecorr/svm_coef.csv'
-path_to_store_feature_selection_boolean_file = '../output/feature_importance/svm/space/likecorr/svm_fs_boolean.csv'
-path_to_store_list_of_feature_file = '../output/feature_importance/svm/space/likecorr/svm_feature_names.csv'
-path_to_store_feature_and_coef_file = '../output/feature_importance/svm/space/likecorr/svm_coef_and_feat.csv'
-path_to_store_feat_imp_for_normalisation = '../output/featimp_normalisation/svm/likecorr/space.csv'
-path_to_store_important_features_by_class_file = '../output/feature_importance/svm/space/likecorr/svm_feat_by_class_combined.csv'
+path_to_store_feature_importance_file = '../output/feature_importance/svm/feat_imp.csv'
 
 # for classifier without pipeline
-_ngram_range = (1,1)
-_use_idf = False
-_loss = 'log' # 'hinge' gives linear SVM; 'log' gives logistic regression
-_penalty = 'l2'
-_alpha = 0.001
-_score_func = chi2
-_percentile = 85
+
+_C = 1.0
+_cache_size = 200
+_class_weight = None
+_coef0 = 0.0
+_degree = 3
+_kernel = 'linear' #can be 'linear', 'rbf' (default), 'poly', 'sigmoid', 'precomputed'
+_gamma = 0.1
+_max_iter = -1
+_probability = False
+_shrinking = True
+_tol = 0.001
+_verbose = False
 
 
 
@@ -765,12 +786,78 @@ def get_data_set():
     # Get dataset
     #############
 
+    # -------------------
+    # UNCOMMENT for column names for NETWORK features
+
+    # degree_column = ['u_out_pos', 'u_out_neg', 'v_in_pos', 'v_in_neg', 'u_out', 'v_in', 'embeddedness']
+    # triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15',
+    #                 't16']
+    # target = ['class']
+    #
+    # column_names = degree_column + triad_column + target
+    # #column_names = degree_column + target
+    # #column_names = triad_column + target
+
+
+    # -------------------
+    # UNCOMMENT for column names for LIWC features
+
+    # lines = open('../output/liwc/liwc_public_timeline_tweets.txt', 'r').readlines()
+    #
+    # for line in lines[:1]:
+    #     spline = line.rstrip('\n').split('\t')
+    #     liwc_column = spline[2:]
+    #
+    # target = ['class']
+    #
+    # column_names = liwc_column + target
+
+    # -------------------
+    # UNCOMMENT for column names for NETWORK + LIWC features
+
+    # degree_column = ['u_out_pos', 'u_out_neg', 'v_in_pos', 'v_in_neg', 'u_out', 'v_in', 'embeddedness']
+    # triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16']
+    #
+    # #network_column = degree_column
+    # #network_column = triad_column
+    # network_column = degree_column + triad_column
+    #
+    # lines = open('../output/liwc/liwc_public_timeline_tweets.txt', 'r').readlines()
+    #
+    # for line in lines[:1]:
+    #     spline = line.rstrip('\n').split('\t')
+    #     liwc_column = spline[2:]
+    #
+    # target = ['class']
+    #
+    # column_names = network_column + liwc_column + target
+
+    # -------------------
+    # UNCOMMENT for column names for NETWORK + LIWC + KEYWORD features
+
     degree_column = ['u_out_pos', 'u_out_neg', 'v_in_pos', 'v_in_neg', 'u_out', 'v_in', 'embeddedness']
-    triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15',
-                    't16']
+    #triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16']
+    triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11']
+
+    #network_column = degree_column
+    #network_column = triad_column
+    network_column = degree_column + triad_column
+
+    lines = open('../output/liwc/liwc_public_timeline_tweets.txt', 'r').readlines()
+
+    for line in lines[:1]:
+        spline = line.rstrip('\n').split('\t')
+        liwc_column = spline[2:]
+
+    #keyword_column = ['profile']
+    keyword_column = ['profile','timeline']
+
     target = ['class']
 
-    column_names = degree_column + triad_column + target
+    column_names = network_column + liwc_column + keyword_column + target
+
+    # ---------------------
+
 
     dataset = pd.read_csv(path_to_labelled_file, names=column_names)
     print(dataset.shape)
@@ -778,7 +865,7 @@ def get_data_set():
     X = dataset.ix[:, :-1]
     y = dataset['class']
 
-    return X, y
+    return X, y, column_names
 
 
 if __name__ == '__main__':
@@ -827,7 +914,7 @@ if __name__ == '__main__':
     # Get feature importance
     ###################
 
-    #svm.get_important_features(clf,count_vect)
+    svm.get_important_features(clf)
 
 
     ###################

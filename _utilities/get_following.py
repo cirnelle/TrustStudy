@@ -198,7 +198,7 @@ def get_following_multi(i):
 
         pass
 
-    print (len(users))
+    print ("Remaining length for "+str(i)+" is: ",len(users))
     print (users)
 
     # ------------------
@@ -219,8 +219,8 @@ def get_following_multi(i):
     # ---------------
     # get following
 
-    retries = 3
-    sleep_time = 5
+    retries = 2
+    sleep_time = 3
 
     following_list = []
 

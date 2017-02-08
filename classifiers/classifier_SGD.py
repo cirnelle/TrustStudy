@@ -225,7 +225,7 @@ class SGD():
         #####################
 
         pipeline = Pipeline([
-            ('vect', TfidfVectorizer(stop_words=stopwords, min_df=3, max_df=0.90)),
+            # ('vect', TfidfVectorizer(stop_words=stopwords, min_df=3, max_df=0.90)),
             # ('clf', LinearSVC(C=1000)),
             ('clf', SGDClassifier(random_state=42))
         ])
@@ -233,8 +233,8 @@ class SGD():
         # Build a grid search to find the best parameter
         # Fit the pipeline on the training set using grid search for the parameters
         parameters = {
-            'vect__ngram_range': [(1, 1), (1, 2), (1, 3)],
-            'vect__use_idf': (True, False),
+            #'vect__ngram_range': [(1, 1), (1, 2), (1, 3)],
+            #'vect__use_idf': (True, False),
             'clf__loss': ('hinge', 'log'),
             'clf__penalty': ('l2', 'l1', 'elasticnet'),
             'clf__n_iter': (5,10), #interesting because big n_iter numbers don't perform as well as small one
@@ -269,35 +269,35 @@ class SGD():
         # in order to get 'clf' for get_important_feature function!
         ###############
 
-        ngram_range = best_parameters['vect__ngram_range']
-        use_idf = best_parameters['vect__use_idf']
+        #ngram_range = best_parameters['vect__ngram_range']
+        #use_idf = best_parameters['vect__use_idf']
         loss = best_parameters['clf__loss']
         penalty = best_parameters['clf__penalty']
         alpha = best_parameters['clf__alpha']
 
         # vectorisation
 
-        count_vect = CountVectorizer(stop_words=stopwords, min_df=3, max_df=0.90, ngram_range=ngram_range)
-        X_CV = count_vect.fit_transform(x_train)
+        # count_vect = CountVectorizer(stop_words=stopwords, min_df=3, max_df=0.90, ngram_range=ngram_range)
+        # X_CV = count_vect.fit_transform(x_train)
 
         # print number of unique words (n_features)
-        print("Shape of train data is " + str(X_CV.shape))
+        print("Shape of train data is " + str(x_train.shape))
 
         # tfidf transformation
 
-        tfidf_transformer = TfidfTransformer(use_idf=use_idf)
-        X_tfidf = tfidf_transformer.fit_transform(X_CV)
+        # tfidf_transformer = TfidfTransformer(use_idf=use_idf)
+        # X_tfidf = tfidf_transformer.fit_transform(X_CV)
 
         # train the classifier
 
         print("Fitting data with best parameters ...")
-        clf = SGDClassifier(loss=loss, penalty=penalty, alpha=alpha, random_state=42).fit(X_tfidf, y_train)
+        clf = SGDClassifier(loss=loss, penalty=penalty, alpha=alpha, random_state=42).fit(x_train, y_train)
 
         ##################
         # get cross validation score
         ##################
 
-        scores = cross_val_score(clf, X_tfidf, y_train, cv=10, scoring='f1_weighted')
+        scores = cross_val_score(clf, x_train, y_train, cv=10, scoring='f1_weighted')
         print ("Cross validation score: "+str(scores))
 
         # Get average performance of classifier on training data using 10-fold CV, along with standard deviation
@@ -309,15 +309,11 @@ class SGD():
         # run classifier on test data
         ##################
 
-        X_test_CV = count_vect.transform(x_test)
-
-        X_test_tfidf = tfidf_transformer.transform(X_test_CV)
-
-        y_predicted = clf.predict(X_test_tfidf)
+        y_predicted = clf.predict(x_test)
 
         # print the mean accuracy on the given test data and labels
 
-        print("Classifier score on test data is: %0.2f " % clf.score(X_test_tfidf, y_test))
+        print("Classifier score on test data is: %0.2f " % clf.score(x_test, y_test))
 
 
         # Print and plot the confusion matrix
@@ -330,7 +326,7 @@ class SGD():
         # plt.matshow(cm)
         # plt.show()
 
-        return clf, count_vect
+        return clf
 
     def use_pipeline_with_fs(self):
 
@@ -563,126 +559,159 @@ class SGD():
         f.close()
 
 
-    def get_important_features(self,clf,count_vect):
+    def get_important_features(self,clf):
 
         # get coef_
 
-        f = open(path_to_store_coefficient_file, 'w')
+        feat_imp = clf.coef_[0]
 
-        coef = clf.coef_[0]
+        print (len(feat_imp))
 
-        for c in coef:
-            f.write(str(c) + '\n')
 
-        f.close()
+        feature_names = get_data_set()[2][:-1]
+
+        print(len(feature_names))
+
+        if len(feat_imp) == len(feature_names):
+
+            zipped = zip(feature_names, feat_imp)
+
+            feature_and_scores = []
+
+            for z in zipped:
+                z = list(z)
+                feature_and_scores.append(z)
+
+            feature_and_scores.sort(key=lambda x: float(x[1]),
+                                    reverse=True)  # sort list by most important feature first
+
+            print(feature_and_scores)
+
+            feat_scores = []
+
+            for fs in feature_and_scores:
+                fs[1] = str(fs[1])
+                feat_scores.append(fs)
+
+            f = open(path_to_store_feature_importance_file, 'w')
+
+            for fs in feat_scores:
+                f.write(','.join(fs) + '\n')
+
+            f.close()
+
+
+        else:
+
+            print("Length not equal, exiting...")
 
         # get feature names
 
-        feature_names = count_vect.get_feature_names()
-
-        f = open(path_to_store_list_of_feature_file, 'w')
-
-        for fn in feature_names:
-            f.write(str(fn) + '\n')
-        f.close()
-
-        print (len(coef))
-        print (len(feature_names))
-
-        #################
-        # if feature selection was used, need to find out which are the features that are retained
-        #################
-
-        if len(coef) != len(feature_names):
-
-            print ()
-            print ("###### feature selection was used, getting retained features ######")
-
-            lines = open(path_to_store_feature_selection_boolean_file).readlines()
-
-            feature_boolean = []
-
-            for line in lines:
-                spline = line.replace('\n','')
-                feature_boolean.append(spline)
-
-            if len(feature_boolean) == len(feature_names):
-
-                selected_features = zip(feature_names,feature_boolean)
-
-                feature_names = []
-
-                for sf in selected_features:
-                    if sf[1] == 'True':
-                        feature_names.append(sf[0])
-
-                print ("Length of retained features is "+str(len(feature_names)))
-
-            else:
-                print ("length not equal, exiting...")
-                sys.exit()
-
-
-        # sort feature importance
-
-        coef_list = []
-        for c in coef:
-            coef_list.append(c)
-
-
-        if len(coef_list) == len(feature_names):
-
-            feat_list = list(zip(coef_list, feature_names))
-
-            feat_list.sort()
-
-        else:
-            print ("Length of coef and feature list not equal, exiting...")
-            sys.exit()
-
-        f = open(path_to_store_feature_and_coef_file, 'w')
-
-        # f.write(str(feat_list))
-
-        for fl in feat_list:
-            f.write(str(fl) + '\n')
-        f.close()
-
-        her = []
-        ler = []
-
-        for fl in feat_list:
-
-            if fl[0] < 0:
-                her.append(['HER',fl[1],str(fl[0])])
-
-            if fl[0] > 0:
-                ler.append(['LER',fl[1],str(fl[0])])
-
-        f = open(path_to_store_important_features_by_class_file, 'w')
-
-        for feat in her[:100]:
-            f.write(','.join(feat)+'\n')
-
-        for feat in reversed(ler[-100:]):
-            f.write(','.join(feat)+'\n')
-
-        f.close()
-
-        # write to file for normalisation
-        # note: length might be shorter than length of feature list because some features have weight 0
-
-        f = open(path_to_store_feat_imp_for_normalisation,'a')
-
-        f.write('\n')
-
-        for feat in her[:100]:
-            f.write(','.join(feat)+'\n')
-
-        for feat in reversed(ler[-100:]):
-            f.write(','.join(feat)+'\n')
-
-        f.close()
+        # feature_names = count_vect.get_feature_names()
+        #
+        # f = open(path_to_store_list_of_feature_file, 'w')
+        #
+        # for fn in feature_names:
+        #     f.write(str(fn) + '\n')
+        # f.close()
+        #
+        # print (len(coef))
+        # print (len(feature_names))
+        #
+        # #################
+        # # if feature selection was used, need to find out which are the features that are retained
+        # #################
+        #
+        # if len(coef) != len(feature_names):
+        #
+        #     print ()
+        #     print ("###### feature selection was used, getting retained features ######")
+        #
+        #     lines = open(path_to_store_feature_selection_boolean_file).readlines()
+        #
+        #     feature_boolean = []
+        #
+        #     for line in lines:
+        #         spline = line.replace('\n','')
+        #         feature_boolean.append(spline)
+        #
+        #     if len(feature_boolean) == len(feature_names):
+        #
+        #         selected_features = zip(feature_names,feature_boolean)
+        #
+        #         feature_names = []
+        #
+        #         for sf in selected_features:
+        #             if sf[1] == 'True':
+        #                 feature_names.append(sf[0])
+        #
+        #         print ("Length of retained features is "+str(len(feature_names)))
+        #
+        #     else:
+        #         print ("length not equal, exiting...")
+        #         sys.exit()
+        #
+        #
+        # # sort feature importance
+        #
+        # coef_list = []
+        # for c in coef:
+        #     coef_list.append(c)
+        #
+        #
+        # if len(coef_list) == len(feature_names):
+        #
+        #     feat_list = list(zip(coef_list, feature_names))
+        #
+        #     feat_list.sort()
+        #
+        # else:
+        #     print ("Length of coef and feature list not equal, exiting...")
+        #     sys.exit()
+        #
+        # f = open(path_to_store_feature_and_coef_file, 'w')
+        #
+        # # f.write(str(feat_list))
+        #
+        # for fl in feat_list:
+        #     f.write(str(fl) + '\n')
+        # f.close()
+        #
+        # her = []
+        # ler = []
+        #
+        # for fl in feat_list:
+        #
+        #     if fl[0] < 0:
+        #         her.append(['HER',fl[1],str(fl[0])])
+        #
+        #     if fl[0] > 0:
+        #         ler.append(['LER',fl[1],str(fl[0])])
+        #
+        # f = open(path_to_store_important_features_by_class_file, 'w')
+        #
+        # for feat in her[:100]:
+        #     f.write(','.join(feat)+'\n')
+        #
+        # for feat in reversed(ler[-100:]):
+        #     f.write(','.join(feat)+'\n')
+        #
+        # f.close()
+        #
+        # # write to file for normalisation
+        # # note: length might be shorter than length of feature list because some features have weight 0
+        #
+        # f = open(path_to_store_feat_imp_for_normalisation,'a')
+        #
+        # f.write('\n')
+        #
+        # for feat in her[:100]:
+        #     f.write(','.join(feat)+'\n')
+        #
+        # for feat in reversed(ler[-100:]):
+        #     f.write(','.join(feat)+'\n')
+        #
+        # f.close()
 
 
     def plot_feature_selection(self):
@@ -734,17 +763,14 @@ class SGD():
 ###############
 
 #path_to_labelled_file = '../output/features/normalised_labelled_degree_triad.csv'
-path_to_labelled_file = '../output/features/by_trust_dictionary/strict/std_norm/norm_labelled_degree_triad.csv'
+path_to_labelled_file = '../output/features/by_manual_labelling/_combined/std_norm/std_labelled_combined_all.csv'
+#path_to_labelled_file = '/Users/yi-linghwong/GitHub/scikit-learn/sklearn/datasets/data/iris_no_header.csv'
 
 path_to_file_to_be_predicted = '../output/to_predict/sydscifest/sydscifest_test'
 path_to_gold_standard_file = '../output/features/maas/labelled_combined.csv'
 path_to_store_predicted_results = '../output/predictions/maas/predicted_results_sgd.csv'
 
-path_to_store_coefficient_file = '../output/feature_importance/sgd/nasa/sgd_coef.csv'
-path_to_store_feature_selection_boolean_file = '../output/feature_importance/sgd/nasa/sgd_fs_boolean.csv'
-path_to_store_list_of_feature_file = '../output/feature_importance/sgd/nasa/sgd_feature_names.csv'
-path_to_store_feature_and_coef_file = '../output/feature_importance/sgd/nasa/sgd_coef_and_feat.csv'
-path_to_store_important_features_by_class_file = '../output/feature_importance/sgd/nasa/sgd_feat_by_class_combined.csv'
+path_to_store_feature_importance_file = '../output/feature_importance/sgd/feat_imp.csv'
 
 path_to_store_feat_imp_for_normalisation = '../output/featimp_normalisation/sgd/nasa/nasa_real.csv'
 
@@ -767,12 +793,78 @@ def get_data_set():
     # Get dataset
     #############
 
+    # -------------------
+    # UNCOMMENT for column names for NETWORK features
+
+    # degree_column = ['u_out_pos', 'u_out_neg', 'v_in_pos', 'v_in_neg', 'u_out', 'v_in', 'embeddedness']
+    # triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15',
+    #                 't16']
+    # target = ['class']
+    #
+    # column_names = degree_column + triad_column + target
+    # #column_names = degree_column + target
+    # #column_names = triad_column + target
+
+
+    # -------------------
+    # UNCOMMENT for column names for LIWC features
+
+    # lines = open('../output/liwc/liwc_public_timeline_tweets.txt', 'r').readlines()
+    #
+    # for line in lines[:1]:
+    #     spline = line.rstrip('\n').split('\t')
+    #     liwc_column = spline[2:]
+    #
+    # target = ['class']
+    #
+    # column_names = liwc_column + target
+
+    # -------------------
+    # UNCOMMENT for column names for NETWORK + LIWC features
+
+    # degree_column = ['u_out_pos', 'u_out_neg', 'v_in_pos', 'v_in_neg', 'u_out', 'v_in', 'embeddedness']
+    # triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16']
+    #
+    # #network_column = degree_column
+    # #network_column = triad_column
+    # network_column = degree_column + triad_column
+    #
+    # lines = open('../output/liwc/liwc_public_timeline_tweets.txt', 'r').readlines()
+    #
+    # for line in lines[:1]:
+    #     spline = line.rstrip('\n').split('\t')
+    #     liwc_column = spline[2:]
+    #
+    # target = ['class']
+    #
+    # column_names = network_column + liwc_column + target
+
+    # -------------------
+    # UNCOMMENT for column names for NETWORK + LIWC + KEYWORD features
+
     degree_column = ['u_out_pos', 'u_out_neg', 'v_in_pos', 'v_in_neg', 'u_out', 'v_in', 'embeddedness']
-    triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15',
-                    't16']
+    #triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16']
+    triad_column = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11']
+
+    #network_column = degree_column
+    #network_column = triad_column
+    network_column = degree_column + triad_column
+
+    lines = open('../output/liwc/liwc_public_timeline_tweets.txt', 'r').readlines()
+
+    for line in lines[:1]:
+        spline = line.rstrip('\n').split('\t')
+        liwc_column = spline[2:]
+
+    #keyword_column = ['profile']
+    keyword_column = ['profile','timeline']
+
     target = ['class']
 
-    column_names = degree_column + triad_column + target
+    column_names = network_column + liwc_column + keyword_column + target
+
+    # ---------------------
+
 
     dataset = pd.read_csv(path_to_labelled_file, names=column_names)
     print(dataset.shape)
@@ -780,7 +872,7 @@ def get_data_set():
     X = dataset.ix[:, :-1]
     y = dataset['class']
 
-    return X, y
+    return X, y, column_names
 
 
 if __name__ == '__main__':
@@ -816,7 +908,7 @@ if __name__ == '__main__':
     # use pipeline
     ###################
 
-    #clf, count_vect = sgd.use_pipeline()
+    #clf = sgd.use_pipeline()
 
     ###################
     # use pipeline and use feature selection
@@ -829,7 +921,7 @@ if __name__ == '__main__':
     # Get feature importance
     ###################
 
-    #sgd.get_important_features(clf,count_vect)
+    sgd.get_important_features(clf)
 
 
     ###################

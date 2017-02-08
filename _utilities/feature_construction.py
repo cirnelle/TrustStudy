@@ -2,288 +2,214 @@ __author__ = 'yi-linghwong'
 
 import os
 import sys
-from collections import defaultdict
 import time
-
 
 class FeatureConstruction():
 
 
-    def create_degree_features(self):
+    def combine_network_liwc_features(self):
 
-        lines1 = open(path_to_trust_links_file,'r').readlines()
-        lines2 = open(path_to_degree_file,'r').readlines()
-        lines3 = open(path_to_degree_signed_file,'r').readlines()
-        lines4 = open(path_to_embeddedness_file,'r').readlines()
+        lines1 = open(path_to_network_feature_file,'r').readlines()
+        lines2 = open(path_to_liwc_feature_file,'r').readlines()
 
-        print ("Getting trust link list ...")
-
-        trust_links = []
+        network_features = []
+        network_trust_labels = []
 
         for line in lines1:
             spline = line.rstrip('\n').split(',')
-            trust_links.append(spline)
+            network_features.append(spline[:-1])
+            network_trust_labels.append(spline[-1])
 
-        print ("Length of trust links: "+str(len(trust_links)))
+        print ("Length of network features: ",len(network_features))
+        print ("Length of network trust labels: ",len(network_trust_labels))
 
-        print ("Getting degrees dict ...")
-
-        degrees_dict = {}
+        liwc_features = []
+        liwc_trust_labels = []
 
         for line in lines2:
             spline = line.rstrip('\n').split(',')
+            liwc_features.append(spline[:-1])
+            liwc_trust_labels.append(spline[-1])
 
-            if spline[0] in degrees_dict:
-                degrees_dict[spline[0]].append([spline[1],spline[2]])
+        print ("Length of liwc features: ",len(liwc_features))
+        print("Length of liwc trust labels: ", len(liwc_trust_labels))
+
+        if network_trust_labels == liwc_trust_labels:
+
+            trust_labels = [[nt] for nt in network_trust_labels]
+
+            if len(network_features) == len(liwc_features) == len(trust_labels):
+
+                zipped = zip(network_features,liwc_features)
+
+                features_combined = []
+
+                for z in zipped:
+
+                    z = list(z)
+                    y = [item for sublist in z for item in sublist] #flatten the list (to make the list of list into one list)
+
+                    features_combined.append(y)
+
+                print ()
+                print ("Length of combined feature list: ",len(features_combined))
+
+                zipped1 = zip(features_combined,trust_labels)
+
+                features_and_labels = []
+
+                for z in zipped1:
+
+                    z = list(z)
+                    y = [item for sublist in z for item in sublist]  # flatten the list (to make the list of list into one list)
+                    features_and_labels.append(y)
+
+                print ("Length of combined feature and label list: ",len(features_and_labels))
+
+                f = open(path_to_store_combined_network_liwc_features_file,'w')
+
+                for fl in features_and_labels:
+                    f.write(','.join(fl)+'\n')
+
+                f.close()
+
 
             else:
-                degrees_dict[spline[0]] = [[spline[1], spline[2]]]
+                print ("Length of feature lists not equal, exiting...")
+                sys.exit()
 
-        print ("Length of degrees dict: "+str(len(degrees_dict)))
 
-        print("Getting signed degrees dict ...")
+        else:
+            print ("Trust label lists not the same, exiting...")
+            sys.exit()
 
-        degrees_signed_dict = {}
+
+    def combine_network_liwc_keyword_features(self):
+
+        lines1 = open(path_to_network_feature_file, 'r').readlines()
+        lines2 = open(path_to_liwc_feature_file, 'r').readlines()
+        lines3 = open(path_to_keyword_feature_file,'r').readlines()
+
+        network_features = []
+        network_trust_labels = []
+
+        for line in lines1:
+            spline = line.rstrip('\n').split(',')
+            network_features.append(spline[:-1])
+            network_trust_labels.append(spline[-1])
+
+        print("Length of network features: ", len(network_features))
+        print("Length of network trust labels: ", len(network_trust_labels))
+
+        liwc_features = []
+        liwc_trust_labels = []
+
+        for line in lines2:
+            spline = line.rstrip('\n').split(',')
+            liwc_features.append(spline[:-1])
+            liwc_trust_labels.append(spline[-1])
+
+        print("Length of liwc features: ", len(liwc_features))
+        print("Length of liwc trust labels: ", len(liwc_trust_labels))
+
+        keyword_features = []
+        keyword_trust_labels = []
 
         for line in lines3:
             spline = line.rstrip('\n').split(',')
+            keyword_features.append(spline[:-1])
+            keyword_trust_labels.append(spline[-1])
 
-            if spline[0] in degrees_signed_dict:
-                degrees_signed_dict[spline[0]].append([spline[1],spline[2],spline[3]])
+        print("Length of keyword features: ", len(keyword_features))
+        print("Length of keyword trust labels: ", len(keyword_trust_labels))
+
+        if network_trust_labels == liwc_trust_labels == keyword_trust_labels:
+
+            trust_labels = [[nt] for nt in network_trust_labels]
+
+            if len(network_features) == len(liwc_features) == len(keyword_features) == len(trust_labels):
+
+                zipped = zip(network_features, liwc_features, keyword_features)
+
+                features_combined = []
+
+                for z in zipped:
+                    z = list(z)
+                    y = [item for sublist in z for item in
+                         sublist]  # flatten the list (to make the list of list into one list)
+
+                    features_combined.append(y)
+
+                print()
+                print("Length of combined feature list: ", len(features_combined))
+
+                zipped1 = zip(features_combined, trust_labels)
+
+                features_and_labels = []
+
+                for z in zipped1:
+                    z = list(z)
+                    y = [item for sublist in z for item in
+                         sublist]  # flatten the list (to make the list of list into one list)
+                    features_and_labels.append(y)
+
+                print("Length of combined feature and label list: ", len(features_and_labels))
+
+                f = open(path_to_store_combined_network_liwc_keyword_features_file, 'w')
+
+                for fl in features_and_labels:
+                    f.write(','.join(fl) + '\n')
+
+                f.close()
+
 
             else:
-                degrees_signed_dict[spline[0]] = [[spline[1], spline[2], spline[3]]]
+                print("Length of feature lists not equal, exiting...")
+                sys.exit()
 
-        print ("Length of signed degrees dict: "+str(len(degrees_signed_dict)))
 
-        print("Getting embeddedness dict ...")
+        else:
+            print("Trust label lists not the same, exiting...")
+            sys.exit()
 
-        embeddedness_dict = {}
 
-        for line in lines4:
+    def remove_useless_features(self):
+
+        ###################
+        # after checking feature importance, this function can be used to remove insignificant features
+        ##################
+
+        #------------------
+        # remove triad features t12, t13, t14, t15, t16
+
+        lines = open(path_to_store_combined_network_liwc_keyword_features_file,'r').readlines()
+
+        print ("Length of list (before): ",len(lines))
+
+        updated_features = []
+
+        for line in lines[:1]:
             spline = line.rstrip('\n').split(',')
+            print ("Number of features (before): ",len(spline))
 
-            if (spline[0],spline[1]) not in embeddedness_dict:
-
-                embeddedness_dict[spline[0],spline[1]] = spline[2]
-
-        print ("Length of embeddedness dict: "+str(len(embeddedness_dict)))
-
-        degree_features_list = []
-        degree_features_list_nonames = []
-
-
-        for tl in trust_links:
-
-            #print (tl)
-
-            degree_features = [str(0)]*7
-
-            u = tl[0]
-            v = tl[1]
-
-            for du in degrees_signed_dict[u]:
-
-                if du[0] == 'out' and du[1] == 'pos':
-                    degree_features[0] = du[2]
-
-                if du[0] == 'out' and du[1] == 'neg':
-                    degree_features[1] = du[2]
-
-            for dv in degrees_signed_dict[v]:
-
-                if dv[0] == 'in' and dv[1] == 'pos':
-                    degree_features[2] = dv[2]
-
-                if dv[0] == 'in' and dv[1] == 'neg':
-                    degree_features[3] = dv[2]
-
-            for du in degrees_dict[u]:
-
-                if du[0] == 'out':
-                    degree_features[4] = du[1]
-
-            for dv in degrees_dict[v]:
-
-                if dv[0] == 'in':
-                    degree_features[5] = dv[1]
-
-            if (u,v) in embeddedness_dict:
-
-                degree_features[6] = embeddedness_dict[(u,v)]
-
-            elif (v,u) in embeddedness_dict:
-
-                degree_features[6] = embeddedness_dict[(v,u)]
-
-            #print (degree_features)
-
-            degree_features.insert(0,tl[0])
-            degree_features.insert(1,tl[1])
-            degree_features_list.append(degree_features)
-            degree_features_list_nonames.append(degree_features[2:])
-
-
-        #print ("Length of degree feature list: "+str(len(degree_features_list_nonames)))
-        #print (degree_features_list[:3])
-        #print (degree_features_list_nonames[:3])
-
-        if len(degree_features_list_nonames) != len(trust_links):
-            print ()
-            print ('!!!!')
-            print ("LENGTHS NOT EQUAL, WARNING, PLEASE CHECK!")
-            print('!!!!')
-            print ()
-
-        f = open(path_to_store_degree_features,'w')
-
-        for df in degree_features_list:
-
-            f.write(','.join(df)+'\n')
-
-        f.close()
-
-        return degree_features_list_nonames
-
-
-    def create_triad_features(self):
-
-        lines1 = open(path_to_trust_links_file,'r').readlines()
-        lines2 = open(path_to_triad_file,'r').readlines()
-
-        print ()
-        print("Getting trust link list ...")
-
-        trust_links = []
-
-        for line in lines1:
-            spline = line.rstrip('\n').split(',')
-            trust_links.append(spline)
-
-        print("Length of trust links: " + str(len(trust_links)))
-
-
-        print ("Getting triads ...")
-
-        triad_dict = {}
-
-        for line in lines2:
-            spline = line.rstrip('\n').split(',')
-
-            triad_dict[spline[0],spline[1]] = spline[2:]
-
-        print ("Length of triads: "+str(len(triad_dict)))
-        #print (triad_dict)
-
-        triad_features_list = []
-        triad_features_list_nonames = []
-
-        for tl in trust_links:
-
-            key = (tl[0],tl[1])
-
-            if key in triad_dict:
-
-                triad_features = triad_dict[key]
-                triad_features.insert(0,tl[0])
-                triad_features.insert(1,tl[1])
-
-                triad_features_list.append(triad_features)
-                triad_features_list_nonames.append(triad_features[2:])
-
-            else:
-                print ('error')
-                print (tl)
-
-        #print ("Length of triad feature list: "+str(len(triad_features_list_nonames)))
-        #print (triad_features_list[:3])
-        #print (triad_features_list_nonames[:3])
-
-        if len(triad_features_list_nonames) != len(trust_links):
-            print ()
-            print ('!!!!')
-            print ("LENGTHS NOT EQUAL, WARNING, PLEASE CHECK!")
-            print('!!!!')
-            print ()
-
-        # write to file
-
-        f = open(path_to_store_triad_features,'w')
-
-        for tf in triad_features_list:
-            f.write(','.join(tf)+'\n')
-
-        f.close()
-
-        return triad_features_list_nonames
-
-
-    def create_complete_features(self):
-
-        degree_features = self.create_degree_features()
-        triad_features = self.create_triad_features()
-
-        print ()
-        print ('-------------------------')
-        print ("Length of degree_features: "+str(len(degree_features)))
-        print ("Length of triad features: "+str(len(triad_features)))
-
-        zipped = zip(degree_features,triad_features)
-
-        all_features = []
-
-        for z in zipped:
-            z = list(z)
-            z = z[0] + z[1]
-
-            if len(z) == 23:
-                all_features.append(z)
-
-            else:
-                print ("error")
-                print (z)
-
-        print ("Length of all features list: "+str(len(all_features)))
-
-        lines = open(path_to_trust_links_file, 'r').readlines()
-
-        trust_links = []
 
         for line in lines:
             spline = line.rstrip('\n').split(',')
-            trust_links.append(spline)
 
-        targets = []
+            for n in range (5): # remove index 18 to 22, i.e. remove item at index 18 five times!
 
-        for tl in trust_links:
-            targets.append(tl[2])
+                spline.pop(18)
 
-        if len(targets) == len(all_features):
+            updated_features.append(spline)
 
-            zipped = zip(all_features,targets)
+        print ()
+        print ("Length of list (after): ",len(updated_features))
+        print ("Number of features (after): ",len(updated_features[1]))
 
-        else:
-            print("Length of target and feature lists not equal, exiting...")
-            sys.exit()
+        f = open(path_to_store_combined_network_liwc_keyword_features_file,'w')
 
-        features_and_target = []
-
-        for z in zipped:
-
-            target_temp = []
-            target_temp.append(z[1])
-
-            z = list(z)
-            z = z[0] + target_temp
-
-            features_and_target.append(z)
-
-        print ("Length of features and target list: "+str(len(features_and_target)))
-
-        f = open(path_to_store_features_and_target_file,'w')
-
-        for ft in features_and_target:
-            f.write(','.join(ft)+'\n')
+        for uf in updated_features:
+            f.write(','.join(uf)+'\n')
 
         f.close()
 
@@ -291,31 +217,28 @@ class FeatureConstruction():
 
 
 
-#################
+
+
+
+
+##################
 # variables
-#################
+##################
 
-path_to_space_user_list = '/Users/yi-linghwong/GitHub/TwitterML/user_list/user_space_combine.csv'
-path_to_filtered_nodes = '../output/network/nodes/1_18sep-18oct/nodes_filtered.csv'
-path_to_trust_links_file = '../output/trust_links/by_trust_dictionary/strict/trust_links_space.csv'
+path_to_network_feature_file = '../output/features/by_manual_labelling/network/std_norm/norm_labelled_degree_triad.csv'
+path_to_liwc_feature_file = '../output/features/by_manual_labelling/liwc/std_norm/norm_labelled_liwc.csv'
+path_to_keyword_feature_file = '../output/features/by_manual_labelling/keyword/std_norm/norm_labelled_keyword_profile_timeline.csv'
 
-path_to_degree_file = '../output/network/degrees/mentions_following_degree.csv'
-path_to_degree_signed_file = '../output/network/degrees/mentions_following_degree_signed.csv'
-path_to_embeddedness_file = '../output/network/embeddedness/by_trust_dictionary/strict/embeddedness_count.csv'
-path_to_triad_file = '../output/network/triad/by_trust_dictionary/strict/triad_space.csv'
-
-path_to_store_degree_features = '../output/features/by_trust_dictionary/strict/degree_features.csv'
-path_to_store_triad_features = '../output/features/by_trust_dictionary/strict/triad_features.csv'
-path_to_store_features_and_target_file = '../output/features/by_trust_dictionary/strict/labelled_degree_and_triad.csv'
-
+path_to_store_combined_network_liwc_features_file = '../output/features/by_manual_labelling/_combined/std_norm/norm_labelled_combined.csv'
+path_to_store_combined_network_liwc_keyword_features_file = '../output/features/by_manual_labelling/_combined/std_norm/norm_labelled_combined_all.csv'
 
 
 if __name__ == '__main__':
 
     fc = FeatureConstruction()
 
-    #fc.create_degree_features()
+    #fc.combine_network_liwc_features()
 
-    #fc.create_triad_features()
+    #fc.combine_network_liwc_keyword_features()
 
-    fc.create_complete_features()
+    fc.remove_useless_features()

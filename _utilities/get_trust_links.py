@@ -365,29 +365,42 @@ class GetTrustLinksByTrustDictionary():
 
     def get_scientist_and_public_list(self):
 
-        lines1 = open(path_to_space_user_list,'r').readlines()
-        lines2 = open(path_to_filtered_nodes,'r').readlines()
+        lines1 = open(path_to_seed_space_user_list, 'r').readlines()
+        lines2 = open(path_to_additional_space_user_list, 'r').readlines()
+        lines3 = open(path_to_filtered_nodes, 'r').readlines()
 
-        scientist_list = []
+        scientist_seed = []
 
         for line in lines1:
             spline = line.rstrip('\n').split(',')
-            scientist_list.append(spline[0].lower())
+
+            scientist_seed.append(spline[0].lower())
+
+        scientist_additional = []
+
+        for line in lines2:
+            spline = line.rstrip('\n')
+
+            scientist_additional.append(spline.lower())
+
+        scientist_all = scientist_seed + scientist_additional
 
         scientists = []
         public = []
 
+        for line in lines3:
+            spline = line.rstrip('\n')
 
-        for line in lines2:
-            spline = line.rstrip('\n').split(',')
-
-            if spline[0].lower() in scientist_list:
+            if spline[0].lower() in scientist_all:
                 scientists.append(spline[0].lower())
 
             else:
                 public.append(spline[0].lower())
 
-        return scientists,public
+        # print (scientists)
+        # print (public)
+
+        return scientists, public
 
 
     def get_trust_links_liwc(self):
@@ -873,6 +886,161 @@ class GetTrustLinksByTrustDictionary():
 
         f.close()
 
+class GetTrustLinksByManualLabelling():
+
+
+    def get_scientist_and_public_list(self):
+
+        lines1 = open(path_to_seed_space_user_list, 'r').readlines()
+        lines2 = open(path_to_additional_space_user_list, 'r').readlines()
+        lines3 = open(path_to_filtered_nodes, 'r').readlines()
+
+        scientist_seed = []
+
+        for line in lines1:
+            spline = line.rstrip('\n').split(',')
+
+            scientist_seed.append(spline[0].lower())
+
+        scientist_additional = []
+
+        for line in lines2:
+            spline = line.rstrip('\n')
+
+            scientist_additional.append(spline.lower())
+
+        scientist_all = scientist_seed + scientist_additional
+
+        scientists = []
+        public = []
+
+        for line in lines3:
+            spline = line.rstrip('\n')
+
+            if spline.lower() in scientist_all:
+                scientists.append(spline.lower())
+
+            else:
+                public.append(spline.lower())
+
+        #print (len(scientists))
+        #print (len(public))
+
+        return scientists, public
+
+
+    def get_trust_links(self):
+
+        lines = open(path_to_manual_labelled_file,'r').readlines()
+
+        print (len(lines))
+
+        scientists = self.get_scientist_and_public_list()[0]
+        public = self.get_scientist_and_public_list()[1]
+
+        trust_links = []
+
+        for line in lines:
+
+            spline = line.rstrip('\n').split(',')
+
+            if spline[0].lower() in public:
+
+                public_user = spline[0].lower()
+
+                tweet_text = ' '+ spline[-1].lower() + ' '
+
+                mention_list = (re.findall(r'(?:\@)\S+', tweet_text, re.I))
+
+                for ml in mention_list:
+
+                    if ml[1:].lower() in scientists:
+
+                        scientist_user = ml[1:].lower()
+
+                        trust_links.append([public_user, scientist_user,spline[1]])
+
+        print ("Length of trust links: ",len(trust_links))
+
+        trust_links_unique = []
+        trust_links_pair = []
+
+        for tl in trust_links:
+
+            if tl not in trust_links_unique:
+                trust_links_unique.append(tl)
+
+        print("Length of trust links (unique): ", len(trust_links_unique))
+
+
+        for tlu in trust_links_unique:
+
+            if [tlu[0],tlu[1]] not in trust_links_pair:
+                trust_links_pair.append([tlu[0],tlu[1]])
+
+            else:
+                print ("Contradicting pairs, both trust_yes and trust_no present, exiting...")
+                print (tlu)
+                sys.exit()
+
+        print ("Length of trust links (unique): ",len(trust_links_unique))
+
+        trust_yes = []
+        trust_no = []
+
+        for tl in trust_links_unique:
+
+            if tl[2] == 'trust_yes':
+                trust_yes.append(tl)
+
+            elif tl[2] == 'trust_no':
+                trust_no.append(tl)
+
+            else:
+                print("error")
+                print(tl)
+
+        print("Length of trust_yes: ", len(trust_yes))
+        print("Length of trust_no: ", len(trust_no))
+
+        f = open(path_to_store_trust_links_unique,'w')
+
+        for tlu in trust_links_unique:
+            f.write(','.join(tlu)+'\n')
+
+        f.close()
+
+
+    def get_public_nodes(self):
+
+        ##################
+        # get the public nodes in trust links unique file in order to get their profile
+        ##################
+
+        lines = open(path_to_store_trust_links_unique,'r').readlines()
+
+        public = self.get_scientist_and_public_list()[1]
+
+        public_nodes = []
+
+        for line in lines:
+
+            spline = line.rstrip('\n').split(',')
+
+            if spline[0] not in public_nodes:
+
+                public_nodes.append(spline[0])
+
+        print ("Length of public nodes: ",len(public_nodes))
+
+        f = open(path_to_store_public_nodes_in_trust_links,'w')
+
+        for pn in public_nodes:
+            f.write(pn+'\n')
+
+        f.close()
+
+
 
 
 ###################
@@ -883,31 +1051,43 @@ class GetTrustLinksByTrustDictionary():
 # by mentions and following
 
 #path_to_all_mentions_file = 'test.txt'
-path_to_all_mentions_file = '../output/network/edges/edges_ALL_mentions.csv'
-path_to_following_list_folder = '../output/network/following/following_list_'
-
-path_to_store_unique_mentions = '../output/network/edges/edges_mentions_unique.csv'
-path_to_store_combined_following_list = '../output/network/following/following_ALL.csv'
-path_to_store_trust_links_file = '../output/trust_links/trust_links_space.csv'
-path_to_store_trust_links_strict_folder = '../output/trust_links/strict/trust_links_space_strict_'
-path_to_store_trust_links_strict = '../output/trust_links/trust_links_space_strict.csv'
+# path_to_all_mentions_file = '../output/network/edges/edges_ALL_mentions.csv'
+# path_to_following_list_folder = '../output/network/following/following_list_'
+#
+# path_to_store_unique_mentions = '../output/network/edges/edges_mentions_unique.csv'
+# path_to_store_combined_following_list = '../output/network/following/following_ALL.csv'
+# path_to_store_trust_links_file = '../output/trust_links/trust_links_space.csv'
+# path_to_store_trust_links_strict_folder = '../output/trust_links/strict/trust_links_space_strict_'
+# path_to_store_trust_links_strict = '../output/trust_links/trust_links_space_strict.csv'
 
 #-----------------
 # by trust dictionary
 
-path_to_liwc_public_mention_scientist_file = '../output/liwc/liwc_swear_words_public_@scientist.txt'
-path_to_liwc_scientist_mention_public_file = '../output/liwc/liwc_swear_words_scientist_@public.txt'
-path_to_space_user_list = '/Users/yi-linghwong/GitHub/TwitterML/user_list/user_space_combine.csv'
+# path_to_liwc_public_mention_scientist_file = '../output/liwc/liwc_swear_words_public_@scientist.txt'
+# path_to_liwc_scientist_mention_public_file = '../output/liwc/liwc_swear_words_scientist_@public.txt'
+# path_to_seed_space_user_list = '/Users/yi-linghwong/GitHub/TwitterML/user_list/user_space_combine.csv'
+# path_to_additional_space_user_list = '../user_lists/1_18sep-18oct/user_space_additional.csv'
+# path_to_filtered_nodes = '../output/network/nodes/1_18sep-18oct/nodes_filtered.csv'
+# path_to_public_mention_scientist_tweets = '../tweets/mentions/public_mention_scientist_extracted/1_18sep-18oct/public_@scientist_filtered.csv'
+# path_to_scientist_mention_public_tweets = '../tweets/mentions/scientist_mention_public/1_18sep-18oct/scientist_@public.csv'
+#
+# path_to_trust_dictionary = '../trust_dictionary/trust_words.csv'
+# path_to_distrust_dictionary = '../trust_dictionary/mistrust_words.csv'
+#
+# path_to_store_trust_links_all_with_tweets = '../output/trust_links/by_trust_dictionary/trust_links_with_tweets.csv'
+# path_to_store_trust_links_unique = '../output/trust_links/by_trust_dictionary/trust_links_space.csv'
+# path_to_store_trust_links_unique_strict = '../output/trust_links/by_trust_dictionary/strict/trust_links_space.csv'
+
+#------------------
+# by manual labelling
+
+path_to_seed_space_user_list = '/Users/yi-linghwong/GitHub/TwitterML/user_list/user_space_combine.csv'
+path_to_additional_space_user_list = '../user_lists/1_18sep-18oct/user_space_additional.csv'
 path_to_filtered_nodes = '../output/network/nodes/1_18sep-18oct/nodes_filtered.csv'
-path_to_public_mention_scientist_tweets = '../tweets/mentions/public_mention_scientist_extracted/1_18sep-18oct/public_@scientist_filtered.csv'
-path_to_scientist_mention_public_tweets = '../tweets/mentions/scientist_mention_public/1_18sep-18oct/scientist_@public.csv'
+path_to_manual_labelled_file = '../output/trust_links/by_manual_labelling/1_18sep-18oct/trust_links_tweets_new.csv'
 
-path_to_trust_dictionary = '../trust_dictionary/trust_words.csv'
-path_to_distrust_dictionary = '../trust_dictionary/mistrust_words.csv'
-
-path_to_store_trust_links_all_with_tweets = '../output/trust_links/by_trust_dictionary/trust_links_with_tweets.csv'
-path_to_store_trust_links_unique = '../output/trust_links/by_trust_dictionary/trust_links_space.csv'
-path_to_store_trust_links_unique_strict = '../output/trust_links/by_trust_dictionary/strict/trust_links_space.csv'
+path_to_store_trust_links_unique = '../output/trust_links/by_manual_labelling/1_18sep-18oct/trust_links_space_new.csv'
+path_to_store_public_nodes_in_trust_links = '../output/network/nodes/1_18sep-18oct/nodes_trust_links_public.csv'
 
 if __name__ == '__main__':
 
@@ -957,7 +1137,7 @@ if __name__ == '__main__':
     # 2. Get Trust Links by Trust Dictionary
     #######################
 
-    td = GetTrustLinksByTrustDictionary()
+    #td = GetTrustLinksByTrustDictionary()
 
     #td.get_scientist_and_public_list()
 
@@ -967,4 +1147,17 @@ if __name__ == '__main__':
 
     #td.get_trust_links_combined()
 
-    td.get_trust_links_combined_strict()
+    #td.get_trust_links_combined_strict()
+
+
+    #######################
+    # 3. Get Trust Links by Manual Labelling
+    #######################
+
+    ml = GetTrustLinksByManualLabelling()
+
+    ml.get_trust_links()
+
+    #ml.get_public_nodes()
+
+

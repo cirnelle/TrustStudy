@@ -379,12 +379,37 @@ class CreateTwitterNetwork():
         # filter out additional scientist from node list based on their profile description
         ###############
 
-        lines = open(path_to_profile_description_file,'r').readlines()
+        profiles = []
 
+        print ()
+        #print ("Getting additional scientists...")
 
+        for n in range(1,6):
 
+            lines = open(path_to_profile_description_file+str(n)+'.csv','r').readlines() # these profiles are only public user, do not contain seed scientists
 
-    path_to_store_seed_and_additional_space_user_list
+            for line in lines:
+                spline = line.rstrip('\n').split(',')
+                profiles.append([spline[0].lower(),spline[1].lower()])
+
+        scientist_strings = ['astrophysicist', 'scientist', 'astronaut', 'astrobiologist', 'astronomer', 'physicist', 'meteorologist', 'engineer', 'biologist', 'chemist', 'geologist']
+
+        scientists_add = []
+
+        for p in profiles:
+
+           clean = re.sub('[^a-zA-Z0-9-_ *.]', '', p[1]).split(' ')
+
+           for ss in scientist_strings:
+
+               if ss in clean:
+                   scientists_add.append(p[0])
+
+        # remove duplicates
+
+        scientist_nodup = list(set(scientists_add))
+
+        return scientist_nodup
 
 
     def get_scientist_and_public_list(self):
@@ -397,37 +422,132 @@ class CreateTwitterNetwork():
         lines1 = open(path_to_seed_space_user_list, 'r').readlines()
         lines2 = open(path_to_store_filtered_nodes, 'r').readlines()
 
-        scientist_list = []
+        scientist_new = self.filter_out_scientists_from_public_list()
+
+        scientist_seed = []
 
         for line in lines1:
             spline = line.rstrip('\n').split(',')
 
-            scientist_list.append(spline[0].lower())
+            scientist_seed.append(spline[0].lower())
 
+        scientist_additional = []
+
+        for sn in scientist_new:
+
+            if sn not in scientist_seed:
+                scientist_additional.append(sn)
+
+
+        #print ("Length of additional scientists: ",len(scientist_additional))
+
+        scientist_all = scientist_seed + scientist_additional
+
+        #print("Length of all scientists: ", len(scientist_all))
+
+        f = open(path_to_store_additional_space_user_list, 'w')
+
+        for sa in scientist_additional:
+
+            f.write(sa + '\n')
+
+        f.close()
+
+        #------------------
+        # get scientists and public
+
+        print ("Getting scientist and public list ...")
 
         scientists = []
         public = []
 
         for line in lines2:
-            spline = line.rstrip('\n').split(',')
+            spline = line.rstrip('\n')
 
-            if spline[0].lower() in scientist_list:
-                scientists.append(spline[0].lower())
+            if spline.lower() in scientist_all:
+                scientists.append(spline.lower())
 
             else:
-                public.append(spline[0].lower())
+                public.append(spline.lower())
 
-        #print ("Length of scientist list is: "+str(len(scientists)))
-        #print ("Length of public list is: "+str(len(public)))
-
+        print ("Length of scientist list is: "+str(len(scientists)))
+        print ("Length of public list is: "+str(len(public)))
 
         return scientists, public
+
+
+    def extract_scientist_mention_public_tweets(self):
+
+        #################
+        # get the tweets in our raw tweet files (NOT the public_@scientist tweet file) which originate from scientist (ALL) to public
+        #################
+
+        lines = open(path_to_raw_unique_tweets_file ,'r').readlines()
+
+        scientists = self.get_scientist_and_public_list()[0]
+        public = self.get_scientist_and_public_list()[1]
+
+        tweets_s2p = []
+        id_list = []
+
+        print ()
+        print("Getting scientist @public tweets ...")
+
+        t_start = time.time()
+
+        for line in lines:
+            spline = line.rstrip('\n').split(',')
+
+            if spline[0].lower() in scientists:
+
+                tweet_text = ' ' + spline[-1].lower() + ' '
+
+                mention_list = (re.findall(r'(?:\@)\S+', tweet_text, re.I))
+
+                for p in public:
+
+                    public_user = '@' + (str(p)).lower()
+
+                    if public_user in mention_list:
+
+                        if spline[2] not in id_list:
+                            id_list.append(spline[2])
+
+                            tweets_s2p.append(spline)
+
+                        ##############
+                        # ALTERNATIVE (slower)
+                        ##############
+
+                        # for su in space_users:
+                        #
+                        #     space_user = ' @' + (str(su)).lower() + ' '
+                        #
+                        #     if space_user in str(tweet_text):
+                        #
+                        #         tweets_containing_scientist.append(spline)
+
+        t_end = time.time()
+        total_time = round(((t_end - t_start) / 60), 2)
+        print("Computing time was " + str(total_time) + " minutes.")
+
+        print()
+        print("Length of raw tweet list is " + str(len(lines)))
+        print("Length of tweet containing scientist is " + str(len(tweets_s2p)))
+
+        f = open(path_to_store_tweets_with_public_mention, 'w')
+
+        for ts in tweets_s2p:
+            f.write(','.join(ts) + '\n')
+
+        f.close()
 
 
     def extract_tweets_for_filtered_nodes(self):
 
         ####################
         # extract public @scientist tweets from raw tweet file for filtered nodes
+        # extract scientist @scientist tweets from raw tweet file for filtered nodes (previously public @scientist)
         ####################
 
         lines1 = open(path_to_store_tweets_with_scientist_mention,'r').readlines()
@@ -435,35 +555,58 @@ class CreateTwitterNetwork():
         print("Length of tweets before filtering: " + str(len(lines1)))
 
         public = self.get_scientist_and_public_list()[1]
+        scientists = self.get_scientist_and_public_list()[0]
 
-        filtered_tweets = []
+        filtered_tweets_p2s = []
+        filtered_tweets_s2s = []
 
         for line in lines1:
             spline = line.rstrip('\n').split(',')
 
             if spline[0].lower() in public:
-                filtered_tweets.append(spline)
+                filtered_tweets_p2s.append(spline)
 
-        print ("Length of tweets after filtering: "+str(len(filtered_tweets)))
+            if spline[0].lower() in scientists:
+                filtered_tweets_s2s.append(spline)
 
-        f = open(path_to_store_tweets_with_scientist_mention_filtered,'w')
 
-        for ft in filtered_tweets:
+        print ("Length of public@scientist tweets after filtering: ", len(filtered_tweets_p2s))
+        print ("Length of scientist@scientist tweets after filtering: ", len(filtered_tweets_s2s))
+
+        f = open(path_to_store_filtered_public_mention_scientist_tweets,'w')
+
+        for ft in filtered_tweets_p2s:
 
             f.write(','.join(ft)+'\n')
 
         f.close()
 
 
+        f = open(path_to_store_filtered_scientist_mention_scientist_tweets, 'w')
+
+        for fs in filtered_tweets_s2s:
+            f.write(','.join(fs) + '\n')
+
+        f.close()
+
+#--------------------------------------------------------------------------------------------#
+#
+# CREATE MENTION NETWORK
+#
+#--------------------------------------------------------------------------------------------#
+
+
     def create_network_mentions(self):
 
         DG1 = nx.MultiDiGraph() # public mention scientist
         DG2 = nx.MultiDiGraph()  # scientist mention public
-        DG3 = nx.MultiDiGraph() # combined mentions
+        DG3 = nx.MultiDiGraph()  # scientist mention scientist
+        DG4 = nx.MultiDiGraph() # combined mentions
 
         DG_1 = nx.MultiDiGraph() # FOR GEPHI: public mention scientist
-        DG_2 = nx.MultiDiGraph()  # FOR GEPHI: scientist mention public
-        DG_3 = nx.MultiDiGraph() # FOR GEPHI: combined mentions
+        DG_2 = nx.MultiDiGraph() # FOR GEPHI: scientist mention public
+        DG_3 = nx.MultiDiGraph()  # FOR GEPHI: scientist mention scientist
+        DG_4 = nx.MultiDiGraph() # FOR GEPHI: combined mentions
 
         #####################
         # get nodes and edges for public mentions of scientists
@@ -543,48 +686,48 @@ class CreateTwitterNetwork():
         # sum up signs (if > 0 then positive, if < 0 then negative) if parallel edges exist (ONLY for Gephi, as it doesn't accept parallel edges)
         # if the sum is zero, default to negative
 
-        print ()
-        print ("Creating GEPHI graph 1 (public @scientist)...")
-
-        t_start = time.time()
-
-        edges_all = edges_pos + edges_neg
-
-        edges_set = set(map(tuple, edges_all))  # result: {[1,2], [3,4]}
-        edges_unique_tuple = list(edges_set)  # result: [(1,2), (3,4)]
-        edges_unique = [list(eu) for eu in edges_unique_tuple]  # convert list of tuples to list of list
-
-
-        # print(len(edges_unique))
-        # print (edges_unique)
-
-        edges_unique_sum_pos = []
-        edges_unique_sum_neg = []
-
-        for eu in edges_unique:
-            count_pos = edges_pos.count(eu)
-            count_neg = edges_neg.count(eu)
-            count = count_pos - count_neg
-
-            if count > 0:
-                edges_unique_sum_pos.append([eu[0], eu[1], count])
-
-            if count <= 0:
-                edges_unique_sum_neg.append([eu[0], eu[1], count])
-
-        #print(len(edges_unique_sum_pos) + len(edges_unique_sum_neg))
-
-        for eup in edges_unique_sum_pos:
-            DG_1.add_edges_from([(eup[0], eup[1])], sign='+', sentiment=eup[2])
-
-        for eun in edges_unique_sum_neg:
-            DG_1.add_edges_from([(eun[0], eun[1])], sign='-', sentiment=eun[2])
-
-        t_end = time.time()
-        total_time = round(((t_end - t_start) / 60),2)
-        print("Computing time was " + str(total_time) + " minutes.")
-
-        nx.write_gexf(DG_1, path_to_store_public_mention_scientist_graph)
+        # print ()
+        # print ("Creating GEPHI graph 1 (public @scientist)...")
+        #
+        # t_start = time.time()
+        #
+        # edges_all = edges_pos + edges_neg
+        #
+        # edges_set = set(map(tuple, edges_all))  # result: {[1,2], [3,4]}
+        # edges_unique_tuple = list(edges_set)  # result: [(1,2), (3,4)]
+        # edges_unique = [list(eu) for eu in edges_unique_tuple]  # convert list of tuples to list of list
+        #
+        #
+        # # print(len(edges_unique))
+        # # print (edges_unique)
+        #
+        # edges_unique_sum_pos = []
+        # edges_unique_sum_neg = []
+        #
+        # for eu in edges_unique:
+        #     count_pos = edges_pos.count(eu)
+        #     count_neg = edges_neg.count(eu)
+        #     count = count_pos - count_neg
+        #
+        #     if count > 0:
+        #         edges_unique_sum_pos.append([eu[0], eu[1], count])
+        #
+        #     if count <= 0:
+        #         edges_unique_sum_neg.append([eu[0], eu[1], count])
+        #
+        # #print(len(edges_unique_sum_pos) + len(edges_unique_sum_neg))
+        #
+        # for eup in edges_unique_sum_pos:
+        #     DG_1.add_edges_from([(eup[0], eup[1])], sign='+', sentiment=eup[2])
+        #
+        # for eun in edges_unique_sum_neg:
+        #     DG_1.add_edges_from([(eun[0], eun[1])], sign='-', sentiment=eun[2])
+        #
+        # t_end = time.time()
+        # total_time = round(((t_end - t_start) / 60),2)
+        # print("Computing time was " + str(total_time) + " minutes.")
+        #
+        # nx.write_gexf(DG_1, path_to_store_public_mention_scientist_graph)
 
         #------------------------
 
@@ -622,6 +765,7 @@ class CreateTwitterNetwork():
         edges_pos_1 = []
         edges_neg_1 = []
 
+        scientist_new = []
 
         t_start = time.time()
 
@@ -639,8 +783,7 @@ class CreateTwitterNetwork():
                     public_person = ml.replace('@','')
 
                     if spline[0].lower() not in nodes:
-                        print ("check")
-                        print (spline[0])
+                        scientist_new.append(spline[0]) # list to hold the additional scientist that were initially public, and are not mentioned by the public in the updated p@s tweets
                         nodes.append(spline[0].lower())
 
                     if public_person.lower() not in nodes:
@@ -663,7 +806,9 @@ class CreateTwitterNetwork():
                     else:
                         print("error")
 
+        print ("Number of new scientists (who are not mentioned by any public): ",len(scientist_new))
 
+        print ()
         print("Number of positive tweets (scientist @public): " + str(len(edges_pos_1)))
         print("Number of negative tweets (scientist @public): " + str(len(edges_neg_1)))
         print("Number of total edges (scientist @public): " + str(len(edges_pos_1 + edges_neg_1)))
@@ -686,10 +831,6 @@ class CreateTwitterNetwork():
         DG2.add_edges_from(edges_neg_1, sign='-')
         DG2.add_nodes_from(nodes)
 
-        DG3.add_edges_from(edges_pos, sign='+')
-        DG3.add_edges_from(edges_neg, sign='-')
-        DG3.add_nodes_from(nodes)
-
 
         # ----------------------
         # CREATE GEPHI GRAPH:
@@ -698,52 +839,215 @@ class CreateTwitterNetwork():
 
         # ---------------- scientist mention public graph ---------------- #
 
-        print ()
-        print("Creating GEPHI graph 2 (scientist @public) ...")
+        # print ()
+        # print("Creating GEPHI graph 2 (scientist @public) ...")
+        #
+        # t_start = time.time()
+        #
+        # edges_all_1 = edges_pos_1 + edges_neg_1
+        #
+        # edges_set_1 = set(map(tuple, edges_all_1))  # result: {[1,2], [3,4]}
+        # edges_unique_tuple_1 = list(edges_set_1)  # result: [(1,2), (3,4)]
+        # edges_unique_1 = [list(eu) for eu in edges_unique_tuple_1]  # convert list of tuples to list of list
+        #
+        # # print(len(edges_unique_1))
+        # # print (edges_unique_1)
+        #
+        # edges_unique_sum_pos_1 = []
+        # edges_unique_sum_neg_1 = []
+        #
+        # for eu in edges_unique_1:
+        #     count_pos = edges_pos_1.count(eu)
+        #     count_neg = edges_neg_1.count(eu)
+        #     count = count_pos - count_neg
+        #
+        #     if count > 0:
+        #         edges_unique_sum_pos_1.append([eu[0], eu[1], count])
+        #
+        #     if count <= 0:
+        #         edges_unique_sum_neg_1.append([eu[0], eu[1], count])
+        #
+        # #print(len(edges_unique_sum_pos_1) + len(edges_unique_sum_neg_1))
+        #
+        # for eup in edges_unique_sum_pos_1:
+        #     DG_2.add_edges_from([(eup[0], eup[1])], sign='+', sentiment=eup[2])
+        #
+        # for eun in edges_unique_sum_neg_1:
+        #     DG_2.add_edges_from([(eun[0], eun[1])], sign='-', sentiment=eun[2])
+        #
+        # t_end = time.time()
+        # total_time = round(((t_end - t_start) / 60),2)
+        # print("Computing time was " + str(total_time) + " minutes.")
+        #
+        # nx.write_gexf(DG_2, path_to_store_scientist_mention_public_graph)
+
+        #--------------------------------
+        # write to file
+
+        f = open(path_to_store_scientist_mention_public_edges, 'w')
+
+        for ep in edges_pos_1:
+            f.write(','.join(ep) + ',pos' + '\n')
+
+        for en in edges_neg_1:
+            f.write(','.join(en) + ',neg' + '\n')
+
+        f.close()
+
+        #####################
+        # get nodes and edges for scientist mentions of scientist
+        #####################
+
+        print()
+        print('----------------------------')
+
+        lines1 = open(path_to_scientist_mention_scientist_tweets_with_sentiment, 'r').readlines()
+
+        scientists = self.get_scientist_and_public_list()[0]
+
+        scientist_list = []
+
+        for s in scientists:
+            scientist_list.append('@' + s.lower())
+
+        print("Creating edges and nodes (scientist mention scientist)...")
+
+        edges_pos_2 = []
+        edges_neg_2 = []
+
+        scientist_author_new = []
+        scientist_mentioned_new  = []
 
         t_start = time.time()
 
-        edges_all_1 = edges_pos_1 + edges_neg_1
+        for line in lines1:
 
-        edges_set_1 = set(map(tuple, edges_all_1))  # result: {[1,2], [3,4]}
-        edges_unique_tuple_1 = list(edges_set_1)  # result: [(1,2), (3,4)]
-        edges_unique_1 = [list(eu) for eu in edges_unique_tuple_1]  # convert list of tuples to list of list
+            spline = line.rstrip('\n').split(',')
+            tweet_text = ' ' + spline[-1].lower() + ' '
 
-        # print(len(edges_unique_1))
-        # print (edges_unique_1)
+            mention_list = (re.findall(r'(?:\@)\S+', tweet_text, re.I))
 
-        edges_unique_sum_pos = []
-        edges_unique_sum_neg = []
+            for ml in mention_list:
 
-        for eu in edges_unique_1:
-            count_pos = edges_pos_1.count(eu)
-            count_neg = edges_neg_1.count(eu)
-            count = count_pos - count_neg
+                if ml in scientist_list:
+                    scientist_author = spline[0].lower()
+                    scientist_mentioned = ml.replace('@', '')
 
-            if count > 0:
-                edges_unique_sum_pos.append([eu[0], eu[1], count])
+                    if spline[0].lower() not in nodes:
+                        scientist_author_new.append(spline[0])
+                        nodes.append(spline[0].lower())
 
-            if count <= 0:
-                edges_unique_sum_neg.append([eu[0], eu[1], count])
+                    if scientist_mentioned.lower() not in nodes:
+                        scientist_mentioned_new.append(scientist_mentioned)
+                        nodes.append(scientist_mentioned.lower())
 
-        #print(len(edges_unique_sum_pos) + len(edges_unique_sum_neg))
+                    # get sentiment to get sign of edges
 
-        for eup in edges_unique_sum_pos:
-            DG_2.add_edges_from([(eup[0], eup[1])], sign='+', sentiment=eup[2])
+                    if spline[-2] == 'pos':
 
-        for eun in edges_unique_sum_neg:
-            DG_2.add_edges_from([(eun[0], eun[1])], sign='-', sentiment=eun[2])
+                        edges_pos.append([scientist_author, scientist_mentioned])
+                        edges_pos_2.append([scientist_author, scientist_mentioned])
+
+                    elif spline[-2] == 'neg':
+
+                        edges_neg.append([scientist_author, scientist_mentioned])
+                        edges_neg_2.append([scientist_author, scientist_mentioned])
+
+                    else:
+                        print("error")
+
+        print()
+        print("Number of positive tweets (scientist @scientist): " + str(len(edges_pos_2)))
+        print("Number of negative tweets (scientist @scientist): " + str(len(edges_neg_2)))
+        print("Number of total edges (scientist @scientist): " + str(len(edges_pos_2 + edges_neg_2)))
+        print("Number of nodes: " + str(len(nodes)))
+
+        print()
+        print("Number of COMBINED positive tweets: " + str(len(edges_pos)))
+        print("Number of COMBINED negative tweets: " + str(len(edges_neg)))
+        print("Number of COMBINED edges: " + str(len(edges_pos + edges_neg)))
+        print("Number of nodes: " + str(len(nodes)))
 
         t_end = time.time()
-        total_time = round(((t_end - t_start) / 60),2)
+        total_time = round(((t_end - t_start) / 60), 2)
         print("Computing time was " + str(total_time) + " minutes.")
 
-        nx.write_gexf(DG_2, path_to_store_scientist_mention_public_graph)
+        # write scientist mention scientist graph
+
+        DG3.add_edges_from(edges_pos_2, sign='+')
+        DG3.add_edges_from(edges_neg_2, sign='-')
+        DG3.add_nodes_from(nodes)
+
+        DG4.add_edges_from(edges_pos, sign='+')
+        DG4.add_edges_from(edges_neg, sign='-')
+        DG4.add_nodes_from(nodes)
+
+        # ----------------------
+        # CREATE GEPHI GRAPH:
+        # sum up signs (if > 0 then positive, if < 0 then negative) if parallel edges exist (ONLY for Gephi, as it doesn't accept parallel edges)
+        # if the sum is zero, default to negative
+
+        # ---------------- scientist mention scientist graph ---------------- #
+
+        # print()
+        # print("Creating GEPHI graph 3 (scientist @scientist) ...")
+        #
+        # t_start = time.time()
+        #
+        # edges_all_2 = edges_pos_2 + edges_neg_2
+        #
+        # edges_set_2 = set(map(tuple, edges_all_2))  # result: {[1,2], [3,4]}
+        # edges_unique_tuple_2 = list(edges_set_2)  # result: [(1,2), (3,4)]
+        # edges_unique_2 = [list(eu) for eu in edges_unique_tuple_2]  # convert list of tuples to list of list
+        #
+        # # print(len(edges_unique_1))
+        # # print (edges_unique_1)
+        #
+        # edges_unique_sum_pos_2 = []
+        # edges_unique_sum_neg_2 = []
+        #
+        # for eu in edges_unique_2:
+        #     count_pos = edges_pos_2.count(eu)
+        #     count_neg = edges_neg_2.count(eu)
+        #     count = count_pos - count_neg
+        #
+        #     if count > 0:
+        #         edges_unique_sum_pos_2.append([eu[0], eu[1], count])
+        #
+        #     if count <= 0:
+        #         edges_unique_sum_neg_2.append([eu[0], eu[1], count])
+        #
+        # # print(len(edges_unique_sum_pos_2) + len(edges_unique_sum_neg_2))
+        #
+        # for eup in edges_unique_sum_pos_2:
+        #     DG_3.add_edges_from([(eup[0], eup[1])], sign='+', sentiment=eup[2])
+        #
+        # for eun in edges_unique_sum_neg_2:
+        #     DG_3.add_edges_from([(eun[0], eun[1])], sign='-', sentiment=eun[2])
+        #
+        # t_end = time.time()
+        # total_time = round(((t_end - t_start) / 60), 2)
+        # print("Computing time was " + str(total_time) + " minutes.")
+        #
+        # nx.write_gexf(DG_3, path_to_store_scientist_mention_scientist_graph)
+
+        # --------------------------------
+        # write to file
+
+        f = open(path_to_store_scientist_mention_scientist_edges, 'w')
+
+        for ep in edges_pos_2:
+            f.write(','.join(ep) + ',pos' + '\n')
+
+        for en in edges_neg_2:
+            f.write(','.join(en) + ',neg' + '\n')
+
+        f.close()
 
         # ------------ ALL mentions ----------- #
 
         print ()
-        print("Creating GEPHI graph 3 (all mentions)...")
+        print("Creating GEPHI graph 4 (all mentions)...")
 
         t_start = time.time()
 
@@ -756,8 +1060,8 @@ class CreateTwitterNetwork():
         # print(len(edges_unique))
         # print (edges_unique)
 
-        edges_unique_sum_pos = []
-        edges_unique_sum_neg = []
+        edges_unique_sum_pos_3 = []
+        edges_unique_sum_neg_3 = []
 
         for eu in edges_unique:
             count_pos = edges_pos.count(eu)
@@ -765,39 +1069,28 @@ class CreateTwitterNetwork():
             count = count_pos - count_neg
 
             if count > 0:
-                edges_unique_sum_pos.append([eu[0], eu[1], count])
+                edges_unique_sum_pos_3.append([eu[0], eu[1], count])
 
             if count <= 0:
-                edges_unique_sum_neg.append([eu[0], eu[1], count])
+                edges_unique_sum_neg_3.append([eu[0], eu[1], count])
 
-        #print(len(edges_unique_sum_pos) + len(edges_unique_sum_neg))
+        #print(len(edges_unique_sum_pos_3) + len(edges_unique_sum_neg_3))
 
-        for eup in edges_unique_sum_pos:
-            DG_3.add_edges_from([(eup[0], eup[1])], sign='+', sentiment=eup[2])
+        for eup in edges_unique_sum_pos_3:
+            DG_4.add_edges_from([(eup[0], eup[1])], sign='+', sentiment=eup[2])
 
-        for eun in edges_unique_sum_neg:
-            DG_3.add_edges_from([(eun[0], eun[1])], sign='-', sentiment=eun[2])
+        for eun in edges_unique_sum_neg_3:
+            DG_4.add_edges_from([(eun[0], eun[1])], sign='-', sentiment=eun[2])
 
 
         t_end = time.time()
         total_time = round(((t_end - t_start) / 60),2)
         print("Computing time was " + str(total_time) + " minutes.")
 
-        nx.write_gexf(DG_3, path_to_store_combined_mention_graph)
+        nx.write_gexf(DG_4, path_to_store_combined_mention_graph)
 
         # ------------------------
-
-
-        f = open(path_to_store_scientist_mention_public_edges, 'w')
-
-        for ep in edges_pos_1:
-            f.write(','.join(ep) + ',pos' + '\n')
-
-        for en in edges_neg_1:
-            f.write(','.join(en) + ',neg' + '\n')
-
-        f.close()
-
+        # write to file
 
         f = open(path_to_store_combined_mention_edges, 'w')
 
@@ -817,13 +1110,13 @@ class CreateTwitterNetwork():
 
         mentions_degree = [] # total in and out degrees for every node
 
-        for id in list(DG3.in_degree_iter(nodes)):
+        for id in list(DG4.in_degree_iter(nodes)):
 
             id = list(id)
 
             mentions_degree.append([id[0],'in',str(id[1])])
 
-        for id in list(DG3.out_degree_iter(nodes)):
+        for id in list(DG4.out_degree_iter(nodes)):
 
             id = list(id)
 
@@ -840,23 +1133,24 @@ class CreateTwitterNetwork():
 
         #----------------
         # get common neighbours (embeddedness)
-        #
+
         # print ()
         # print ("Getting common neighbours (embeddedness)...")
         #
-        # DG_3a = nx.Graph() # common neighbour function only works with undirected graphs
+        # DG_4a = nx.Graph() # common neighbour function only works with undirected graphs
         #
-        # DG_3a.add_edges_from(edges_pos, sign='+')
-        # DG_3a.add_edges_from(edges_neg, sign='-')
-        # DG_3a.add_nodes_from(nodes)
+        # DG_4a.add_edges_from(edges_pos, sign='+')
+        # DG_4a.add_edges_from(edges_neg, sign='-')
+        # DG_4a.add_nodes_from(nodes)
         #
-        # print (sorted(nx.common_neighbors(DG_3a,'cosmocrops','nasa')))
+        # print (sorted(nx.common_neighbors(DG_4a,'cosmocrops','nasa')))
 
-#-----------------------------------------------------------
+
+#-----------------------------------------------------------------------------------------------#
 #
 # CREATE FOLLOWING NETWORK
 #
-#-----------------------------------------------------------
+#-----------------------------------------------------------------------------------------------#
 
 
     def create_following_list(self, n):
@@ -894,6 +1188,7 @@ class CreateTwitterNetwork():
                 if f[1].lower() in public:
                     public_followed = list(set(user).intersection(public))
                     following_list.append(['2', public_followed[0]])
+
 
         following_dict = {}
 
@@ -969,9 +1264,9 @@ class CreateTwitterNetwork():
 
     def create_network_following(self):
 
-        DG4 = nx.MultiDiGraph() # for only following graph
-        DG5 = nx.MultiDiGraph() # for combined mention and following graph
-        DG_5 = nx.MultiDiGraph() # for Gephi: combined mention and following
+        DG5 = nx.MultiDiGraph() # for only following graph
+        DG6 = nx.MultiDiGraph() # for combined mention and following graph
+        DG_6 = nx.MultiDiGraph() # for Gephi: combined mention and following (sum up)
 
         print ("Getting following dict ...")
 
@@ -980,7 +1275,8 @@ class CreateTwitterNetwork():
         following_dict = {}
 
         for n in range(1, 21):
-            lines = open('../output/network/following/following_list_' + str(n) + '.csv', 'r').readlines()
+
+            lines = open(path_to_store_following_list + str(n) + '.csv', 'r').readlines()
 
             for line in lines:
                 spline = line.rstrip('\n').split(',')
@@ -1118,7 +1414,7 @@ class CreateTwitterNetwork():
         # f.close()
 
         ###################
-        # create graph for following_list_dict
+        # create graph for following_list_dict and combined mention+following
         ###################
 
         lines = open(path_to_store_combined_mention_edges,'r').readlines()
@@ -1142,6 +1438,11 @@ class CreateTwitterNetwork():
 
         nodes_temp = [] # get number of nodes from mention graph, to be used to check with final nodes count (should be the same!)
 
+        t_start = time.time()
+
+        print ()
+        print ("Getting nodes (from mention graph)...")
+
         for ep in edges_pos:
 
             if ep[0] not in nodes_temp:
@@ -1160,10 +1461,19 @@ class CreateTwitterNetwork():
 
         print("Length of nodes (from mention graph): " + str(len(nodes_temp)))
 
+        t_end = time.time()
+        total_time = round(((t_end - t_start) / 60),2)
+        print("Computing time was " + str(total_time) + " minutes.")
+
         scientists = self.get_scientist_and_public_list()[0]
         public = self.get_scientist_and_public_list()[1]
 
+        print ()
+        print ("Getting mentions+following edges...")
+
         edges_pos_2 = [] # to store only following edges
+
+        t_start = time.time()
 
         for key,value in following_dict.items():
 
@@ -1191,7 +1501,16 @@ class CreateTwitterNetwork():
         print("Length of negative edges (mentions+following):  " + str(len(edges_neg)))
         print("Length of total edges (mentions+following):  " + str(len(edges_neg) + len(edges_pos)))
 
+        t_end = time.time()
+        total_time = round(((t_end - t_start) / 60),2)
+        print("Computing time was " + str(total_time) + " minutes.")
+
         # get nodes
+
+        print ()
+        print ("Getting nodes (mentions+following)...")
+
+        t_start = time.time()
 
         nodes = []
 
@@ -1212,7 +1531,15 @@ class CreateTwitterNetwork():
                 nodes.append(en[1])
 
         print ("Length of nodes (for mention+following graph): "+str(len(nodes)))
-        #print (nodes)
+
+        t_end = time.time()
+        total_time = round(((t_end - t_start) / 60),2)
+        print("Computing time was " + str(total_time) + " minutes.")
+
+        print ()
+        print ("Creating GEPHI graph (following) ...")
+
+        t_start = time.time()
 
         nodes_1 = [] # for only following graph
 
@@ -1224,14 +1551,19 @@ class CreateTwitterNetwork():
             if ep[1] not in nodes_1:
                 nodes_1.append(ep[1])
 
-        DG4.add_edges_from(edges_pos_2, sign='+')
-        DG4.add_nodes_from(nodes_1)
+        DG5.add_edges_from(edges_pos_2, sign='+')
+        DG5.add_nodes_from(nodes_1)
 
-        nx.write_gexf(DG4, path_to_store_following_graph)
+        nx.write_gexf(DG5, path_to_store_following_graph)
 
-        DG5.add_edges_from(edges_pos, sign='+')
-        DG5.add_edges_from(edges_neg, sign='-')
-        DG5.add_nodes_from(nodes)
+        DG6.add_edges_from(edges_pos, sign='+')
+        DG6.add_edges_from(edges_neg, sign='-')
+        DG6.add_nodes_from(nodes)
+
+        t_end = time.time()
+        total_time = round(((t_end - t_start) / 60),2)
+        print("Computing time was " + str(total_time) + " minutes.")
+
 
         # -------------------------
 
@@ -1259,50 +1591,49 @@ class CreateTwitterNetwork():
         # sum up signs (if > 0 then positive, if < 0 then negative) if parallel edges exist (ONLY for Gephi, as it doesn't accept parallel edges)
         # if the sum is zero, default to negative
 
-        print ()
-        print ("Creating GEPHI graph (mentions+following) ...")
-
-        t_start = time.time()
-
-        edges_all = edges_pos + edges_neg
-
-        edges_set = set(map(tuple, edges_all))  # result: {[1,2], [3,4]}
-        edges_unique_tuple = list(edges_set)  # result: [(1,2), (3,4)]
-        edges_unique = [list(eu) for eu in edges_unique_tuple]  # convert list of tuples to list of list
-
-
-        print ()
-        print ("Length of unique edges(before): "+str(len(edges_unique)))
-        #print (edges_unique)
-
-        edges_unique_sum_pos = []
-        edges_unique_sum_neg = []
-
-        for eu in edges_unique:
-            count_pos = edges_pos.count(eu)
-            count_neg = edges_neg.count(eu)
-            count = count_pos - count_neg
-
-            if count > 0:
-                edges_unique_sum_pos.append([eu[0],eu[1],count])
-
-            if count <= 0:
-                edges_unique_sum_neg.append([eu[0],eu[1],count])
-
-        print ("Length of unique edges(after): "+str(len(edges_unique_sum_pos)+len(edges_unique_sum_neg)))
-
-        for eup in edges_unique_sum_pos:
-            DG_5.add_edges_from([(eup[0],eup[1])], sign='+', sentiment=eup[2])
-
-        for eun in edges_unique_sum_neg:
-            DG_5.add_edges_from([(eun[0], eun[1])], sign='-', sentiment=eun[2])
-
-        t_end = time.time()
-        total_time = round(((t_end - t_start) / 60), 2)
-        print("Computing time was " + str(total_time) + " minutes.")
-
-
-        nx.write_gexf(DG_5, path_to_store_combined_mention_and_following_graph)
+        # print ()
+        # print ("Creating GEPHI graph (mentions+following) ...")
+        #
+        # t_start = time.time()
+        #
+        # edges_all = edges_pos + edges_neg
+        #
+        # edges_set = set(map(tuple, edges_all))  # result: {[1,2], [3,4]}
+        # edges_unique_tuple = list(edges_set)  # result: [(1,2), (3,4)]
+        # edges_unique = [list(eu) for eu in edges_unique_tuple]  # convert list of tuples to list of list
+        #
+        #
+        # print ()
+        # print ("Length of unique edges(before): "+str(len(edges_unique)))
+        # #print (edges_unique)
+        #
+        # edges_unique_sum_pos = []
+        # edges_unique_sum_neg = []
+        #
+        # for eu in edges_unique:
+        #     count_pos = edges_pos.count(eu)
+        #     count_neg = edges_neg.count(eu)
+        #     count = count_pos - count_neg
+        #
+        #     if count > 0:
+        #         edges_unique_sum_pos.append([eu[0],eu[1],count])
+        #
+        #     if count <= 0:
+        #         edges_unique_sum_neg.append([eu[0],eu[1],count])
+        #
+        # print ("Length of unique edges(after): "+str(len(edges_unique_sum_pos)+len(edges_unique_sum_neg)))
+        #
+        # for eup in edges_unique_sum_pos:
+        #     DG_6.add_edges_from([(eup[0],eup[1])], sign='+', sentiment=eup[2])
+        #
+        # for eun in edges_unique_sum_neg:
+        #     DG_6.add_edges_from([(eun[0], eun[1])], sign='-', sentiment=eun[2])
+        #
+        # t_end = time.time()
+        # total_time = round(((t_end - t_start) / 60), 2)
+        # print("Computing time was " + str(total_time) + " minutes.")
+        #
+        # nx.write_gexf(DG_6, path_to_store_combined_mention_and_following_graph)
 
         # ----------------
         # get in and out degrees
@@ -1310,23 +1641,23 @@ class CreateTwitterNetwork():
         print()
         print("Getting in and out degrees...")
 
-        mentions_degree = []  # total in and out degrees for every node
+        mentions_following_degree = []  # total in and out degrees for every node
 
-        for id in list(DG5.in_degree_iter(nodes)):
+        for id in list(DG6.in_degree_iter(nodes)):
             id = list(id)
 
-            mentions_degree.append([id[0], 'in', str(id[1])])
+            mentions_following_degree.append([id[0], 'in', str(id[1])])
 
-        for id in list(DG5.out_degree_iter(nodes)):
+        for id in list(DG6.out_degree_iter(nodes)):
             id = list(id)
 
-            mentions_degree.append([id[0], 'out', str(id[1])])
+            mentions_following_degree.append([id[0], 'out', str(id[1])])
 
-        print("Length of in and out degrees list: " + str(len(mentions_degree)))
+        print("Length of in and out degrees list: " + str(len(mentions_following_degree)))
 
         f = open(path_to_store_combined_mention_following_in_out_degrees, 'w')
 
-        for md in mentions_degree:
+        for md in mentions_following_degree:
             f.write(','.join(md) + '\n')
 
         f.close()
@@ -1337,11 +1668,11 @@ class CreateTwitterNetwork():
         # print()
         # print("Getting common neighbours (embeddedness)...")
         #
-        # DG_5a = nx.Graph()  # common neighbour function only works with undirected graphs
+        # DG_6a = nx.Graph()  # common neighbour function only works with undirected graphs
         #
-        # DG_5a.add_edges_from(edges_pos, sign='+')
-        # DG_5a.add_edges_from(edges_neg, sign='-')
-        # DG_5a.add_nodes_from(nodes)
+        # DG_6a.add_edges_from(edges_pos, sign='+')
+        # DG_6a.add_edges_from(edges_neg, sign='-')
+        # DG_6a.add_nodes_from(nodes)
         #
         # print(sorted(nx.common_neighbors(DG_5a, 'cosmocrops', 'nasa')))
 
@@ -1502,45 +1833,50 @@ class CreateTwitterNetwork():
 ##################
 
 #path_to_raw_unique_tweets_file = 'test.txt'
-path_to_raw_unique_tweets_file = '/Users/yi-linghwong/Box Sync/unique_tweets/space/3_raw_tweets_18nov-18dec_1.csv'
+path_to_raw_unique_tweets_file = '/Users/yi-linghwong/Box Sync/unique_tweets/space/1_raw_tweets_18sep-18oct.csv'
 path_to_raw_unique_tweets_file_1 = '/Users/yi-linghwong/Box Sync/unique_tweets/space/3_raw_tweets_18nov-18dec_2.csv'
 path_to_seed_space_user_list = '/Users/yi-linghwong/GitHub/TwitterML/user_list/user_space_combine.csv'
-path_to_following_list_folder = '/Users/yi-linghwong/GitHub/_big_files/twitter/TrustStudy/3_18nov-18dec/following/space_following_'
-path_to_profile_description_file = '../output/profile_description/profile_1_18sep-18oct.csv'
+path_to_following_list_folder = '/Users/yi-linghwong/GitHub/_big_files/twitter/TrustStudy/1_18sep-18oct/following/space_following_'
+path_to_profile_description_file = '../output/profile_description/1_18sep-18oct/profile_'
 
-path_to_public_mention_scientist_tweets_with_sentiment = '../tweets/mentions/public_mention_scientist_extracted/public_@scientist_sentiment.csv'
-path_to_scientist_mention_public_tweets_with_sentiment = '../tweets/mentions/scientist_mention_public/scientist_@public_sentiment.csv'
+path_to_public_mention_scientist_tweets_with_sentiment = '../tweets/public_mention_scientist_extracted/1_18sep-18oct/public_@scientist_sentiment.csv'
+path_to_scientist_mention_public_tweets_with_sentiment = '../tweets/scientist_mention_public/1_18sep-18oct/scientist_@public_sentiment.csv'
+path_to_scientist_mention_scientist_tweets_with_sentiment = '../tweets/scientist_mention_scientist/1_18sep-18oct/scientist_@scientist_sentiment.csv'
 
 # storing
 
-path_to_store_tweets_with_scientist_mention = '../tweets/mentions/public_mention_scientist_extracted/3_18nov-18dec/public_@scientist.csv' #tweets extracted from unique tweets corpus that contain mention of scientists
-path_to_store_tweets_with_scientist_mention_filtered = '../tweets/mentions/public_mention_scientist_extracted/public_@scientist_filtered.csv'
+path_to_store_tweets_with_scientist_mention = '../tweets/public_mention_scientist_extracted/1_18sep-18oct/public_@scientist.csv' #tweets extracted from unique tweets corpus that may contain s@s tweets
+path_to_store_tweets_with_public_mention = '../tweets/scientist_mention_public/1_18sep-18oct/scientist_@public_extracted.csv' #tweets extracted from unique tweets corpus that contain mention of public
+path_to_store_filtered_public_mention_scientist_tweets = '../tweets/public_mention_scientist_extracted/1_18sep-18oct/public_@scientist_filtered.csv' #tweets filtered from public_@scientist file and without s@s tweets
+path_to_store_filtered_scientist_mention_scientist_tweets = '../tweets/scientist_mention_scientist/1_18sep-18oct/scientist_@scientist_filtered.csv' #tweets filtered from public_@scientist file that are actually s@s tweets
 
-path_to_store_nodes = '../output/network/nodes/3_18nov-18dec/nodes_extracted.csv'
-path_to_store_nodes_without_following = '../output/network/nodes/3_18nov-18dec/nodes_without_following.csv'
-path_to_store_nodes_with_following = '../output/network/nodes/3_18nov-18dec/nodes_with_following.csv'
-path_to_store_filtered_nodes = '../output/network/nodes/nodes_filtered.csv'
+path_to_store_nodes = '../output/network/nodes/1_18sep-18oct/nodes_extracted.csv'
+path_to_store_nodes_without_following = '../output/network/nodes/1_18sep-18oct/nodes_without_following.csv'
+path_to_store_nodes_with_following = '../output/network/nodes/1_18sep-18oct/nodes_with_following.csv'
+path_to_store_filtered_nodes = '../output/network/nodes/1_18sep-18oct/nodes_filtered.csv'
 
-path_to_store_seed_and_additional_space_user_list = '../user_lists/user_space_updated.csv'
+path_to_store_additional_space_user_list = '../user_lists/1_18sep-18oct/user_space_additional.csv'
 
-path_to_store_following_list = '../output/network/following/following_list_' # users and the scientist and public users they follow
+path_to_store_following_list = '../output/network/following/1_18sep-18oct/following_list_' # users and the scientist and public users they follow
 
-path_to_store_public_mention_scientist_graph = '../output/graph_files/public_@scientist_extracted.gexf'
-path_to_store_scientist_mention_public_graph = '../output/graph_files/scientist_@public.gexf'
-path_to_store_combined_mention_graph = '../output/graph_files/ALL_mentions.gexf'
-path_to_store_following_graph = '../output/graph_files/following.gexf'
-path_to_store_combined_mention_and_following_graph = '../output/graph_files/ALL_mentions_following.gexf'
+path_to_store_public_mention_scientist_graph = '../output/graph_files/1_18sep-18oct/public_@scientist.gexf'
+path_to_store_scientist_mention_public_graph = '../output/graph_files/1_18sep-18oct/scientist_@public.gexf'
+path_to_store_scientist_mention_scientist_graph = '../output/graph_files/1_18sep-18oct/scientist_@scientist.gexf'
+path_to_store_combined_mention_graph = '../output/graph_files/1_18sep-18oct/ALL_mentions.gexf'
+path_to_store_following_graph = '../output/graph_files/1_18sep-18oct/following.gexf'
+path_to_store_combined_mention_and_following_graph = '../output/graph_files/1_18sep-18oct/ALL_mentions_following.gexf'
 
-path_to_store_public_mention_scientist_edges = '../output/network/edges/edges_public_@scientist.csv'
-path_to_store_scientist_mention_public_edges = '../output/network/edges/edges_scientist_@public.csv'
-path_to_store_combined_mention_edges = '../output/network/edges/edges_ALL_mentions.csv'
-path_to_store_following_edges = '../output/network/edges/edges_following.csv'
-path_to_store_combined_mentions_and_following_edges = '../output/network/edges/edges_ALL_mentions_following.csv'
+path_to_store_public_mention_scientist_edges = '../output/network/edges/1_18sep-18oct/edges_public_@scientist.csv'
+path_to_store_scientist_mention_public_edges = '../output/network/edges/1_18sep-18oct/edges_scientist_@public.csv'
+path_to_store_scientist_mention_scientist_edges = '../output/network/edges/1_18sep-18oct/edges_scientist_@scientist.csv'
+path_to_store_combined_mention_edges = '../output/network/edges/1_18sep-18oct/edges_ALL_mentions.csv'
+path_to_store_following_edges = '../output/network/edges/1_18sep-18oct/edges_following.csv'
+path_to_store_combined_mentions_and_following_edges = '../output/network/edges/1_18sep-18oct/edges_ALL_mentions_following.csv'
 
-path_to_store_combined_mention_in_out_degrees = '../output/network/degrees/mentions_degree.csv'
-path_to_store_combined_mention_following_in_out_degrees = '../output/network/degrees/mentions_following_degree.csv'
-path_to_store_signed_combined_mention_in_out_degrees = '../output/network/degrees/mentions_degree_signed.csv'
-path_to_store_signed_combined_mention_following_in_out_degrees = '../output/network/degrees/mentions_following_degree_signed.csv'
+path_to_store_combined_mention_in_out_degrees = '../output/network/degrees/1_18sep-18oct/unsigned_degree_mentions.csv'
+path_to_store_combined_mention_following_in_out_degrees = '../output/network/degrees/1_18sep-18oct/unsigned_degree_mentions-following.csv'
+path_to_store_signed_combined_mention_in_out_degrees = '../output/network/degrees/1_18sep-18oct/signed_degree_mentions.csv'
+path_to_store_signed_combined_mention_following_in_out_degrees = '../output/network/degrees/1_18sep-18oct/signed_degree_mentions-following.csv'
 
 
 if __name__ == '__main__':
@@ -1565,6 +1901,11 @@ if __name__ == '__main__':
 
     #run get_profile.py
 
+    # HELPER FUNCTIONS BELOW, do not need to be run unless for debugging
+
+    #cn.filter_out_scientists_from_public_list()
+    #cn.get_scientist_and_public_list()
+
     ##################
     # 4. get following for all nodes
     ##################
@@ -1575,7 +1916,7 @@ if __name__ == '__main__':
 
     # 2. (OPTIONAL) extract the following list for the duplicated nodes, i.e. (uncomment next line)
 
-    cn.get_following_list_for_duplicated_nodes()
+    #cn.get_following_list_for_duplicated_nodes()
 
     # 3. run get_following.py
 
@@ -1598,37 +1939,44 @@ if __name__ == '__main__':
     # run get_sentiment.py
 
     ##################
-    # 8. get replies to public from scientist timeline (for filtered nodes!)
+    # 8. extract scientist @public tweets from raw tweet file
+    ##################
+
+    #cn.extract_scientist_mention_public_tweets()
+
+    ##################
+    # 9. get replies to public (and scientists) from scientist timeline (for filtered nodes!)
     ##################
 
     # run get_replies_from_scientists.py
 
     ##################
-    # 9. get sentiment for scientist @public tweets
+    # 10. get sentiment for scientist @public and scientist @scientist tweets
     ##################
 
     # run get_sentiment.py
 
     ##################
-    # 10. create network for mentions (and in/out degrees)
+    # 11. create network for mentions (and in/out degrees)
     ##################
 
     #cn.create_network_mentions()
 
     ##################
-    # 11. start multiprocessing to get following dict
+    # 12. start multiprocessing to get following dict
     ##################
 
     #cn.start_get_foll_multiprocess()
 
     ##################
-    # 12. create network for following (and in/out degrees)
+    # 13. create network for following (and in/out degrees)
     ##################
 
-    #cn.create_network_following()
+    cn.create_network_following()
 
     ##################
-    # 13. get signed in/out degrees
+    # 14. get signed in/out degrees
     ##################
 
     #cn.get_signed_in_out_degrees()
+

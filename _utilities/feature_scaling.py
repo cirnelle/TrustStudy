@@ -8,11 +8,37 @@ from sklearn import preprocessing
 import random
 
 
-degree_column = ['u_out_pos','u_out_neg','v_in_pos','v_in_neg','u_out','v_in','embeddedness']
-triad_column = ['t1','t2','t3','t4','t5','t6','t7','t8','t9','t10','t11','t12','t13','t14','t15','t16']
-target = ['class']
+####################
+# column name for degree triad features
+####################
 
-column_names = degree_column+triad_column+target
+# degree_column = ['u_out_pos','u_out_neg','v_in_pos','v_in_neg','u_out','v_in','embeddedness']
+# triad_column = ['t1','t2','t3','t4','t5','t6','t7','t8','t9','t10','t11','t12','t13','t14','t15','t16']
+# target = ['class']
+#
+# #column_names = degree_column+triad_column+target
+# #column_names = degree_column+target
+# column_names = triad_column+target
+
+#####################
+# column name for liwc features
+#####################
+
+# lines = open('../output/liwc/liwc_public_timeline_tweets.txt','r').readlines()
+#
+# for line in lines[:1]:
+#     spline = line.rstrip('\n').split('\t')
+#     liwc_column = spline[2:]
+#
+# target = ['class']
+# column_names = liwc_column + target
+
+#####################
+# column name for keyword features
+#####################
+
+column_names = ['profile','timeline','class']
+#column_names = ['timeline','class']
 
 
 class FeatureScaling():
@@ -328,14 +354,14 @@ class FeatureScaling():
 # variables
 ################
 
-path_to_labelled_features_file = '../output/features/by_trust_dictionary/strict/labelled_degree_and_triad.csv'
-path_to_trust_link_file = '../output/trust_links/by_trust_dictionary/strict/trust_links_space.csv'
+path_to_labelled_features_file = '../output/features/by_manual_labelling/keyword/labelled_keyword_profile_timeline.csv' #IMPORTANT: Remember to also change (uncomment) the correct column heading at the top of this file!!
+path_to_trust_link_file = '../output/trust_links/by_manual_labelling/1_18sep-18oct/trust_links_space_filtered.csv'
 
-path_to_store_standardised_feature_file = '../output/features/by_trust_dictionary/strict/std_norm/standardised_labelled_degree_triad.csv'
-path_to_store_normalised_feature_file = '../output/features/by_trust_dictionary/strict/std_norm/normalised_labelled_degree_triad.csv'
+path_to_store_standardised_feature_file = '../output/features/by_manual_labelling/keyword/std_norm/std_labelled_keyword_profile_timeline.csv'
+path_to_store_normalised_feature_file = '../output/features/by_manual_labelling/keyword/std_norm/norm_labelled_keyword_profile_timeline.csv'
 
-path_to_store_balance_class_standardised_feature_file = '../output/features/by_trust_dictionary/strict/std_norm/balanced_std_labelled_degree_triad.csv'
-path_to_store_balance_class_normalised_feature_file = '../output/features/by_trust_dictionary/strict/std_norm/balanced_norm_labelled_degree_triad.csv'
+path_to_store_balance_class_standardised_feature_file = '../output/features/by_manual_labelling/keyword/std_norm/balanced_std_labelled_keyword_profile_timeline.csv'
+path_to_store_balance_class_normalised_feature_file = '../output/features/by_manual_labelling/keyword/std_norm/balanced_norm_labelled_keyword_profile_timeline.csv'
 
 
 if __name__ == '__main__':
@@ -344,6 +370,6 @@ if __name__ == '__main__':
 
     #fs.standardise_features()
 
-    fs.normalise_features()
+    #fs.normalise_features()
 
-    #fs.balance_class()
+    fs.balance_class()
